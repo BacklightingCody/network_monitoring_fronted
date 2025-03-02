@@ -23,6 +23,7 @@ export function ServiceHealthPanel() {
   };
 
   return (
+    <>
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Service Health</h2>
       <div className="space-y-4">
@@ -45,5 +46,6 @@ export function ServiceHealthPanel() {
         ))}
       </div>
     </div>
+    </>
   );
 }

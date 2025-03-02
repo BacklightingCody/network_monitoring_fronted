@@ -1,13 +1,29 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+  "include": [
+    "src/**/*",
+    "vite.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
   ],
   "compilerOptions": {
+    "lib": [
+      "dom",
+      "esnext"
+    ],
     "baseUrl": ".", // 项目的根目录
+    "target": "esNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "allowImportingTsExtensions":true,
     "paths": {
-      "@/*": ["src/*"] // 添加别名配置
+      "@/*": [
+        "src/*"
+      ]
     }
   }
 }

@@ -12,7 +12,7 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, total, unit, icon, color }: MetricCardProps) {
   const percentage = total ? (value / total) * 100 : value;
-  
+
   return (
     <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-2">
@@ -29,11 +29,10 @@ function MetricCard({ title, value, total, unit, icon, color }: MetricCardProps)
         {total && (
           <div className="mt-2">
             <div className="w-full bg-gray-100 rounded-full h-2">
-              <div 
-                className={`h-2 rounded-full ${
-                  percentage > 80 ? 'bg-red-500' : 
-                  percentage > 60 ? 'bg-yellow-500' : 'bg-green-500'
-                }`}
+              <div
+                className={`h-2 rounded-full ${percentage > 80 ? 'bg-red-500' :
+                    percentage > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                  }`}
                 style={{ width: `${percentage}%` }}
               />
             </div>
@@ -49,7 +48,7 @@ function MetricCard({ title, value, total, unit, icon, color }: MetricCardProps)
 
 export function SystemMetrics() {
   const initialMetrics = {
-    cpu: 22,
+    cpu: { used: 22, total: 100 },
     memory: { used: 9.62, total: 16 },
     disk: { used: 459.5, total: 512 },
     network: { bandwidth: 610.89 }
@@ -67,7 +66,10 @@ export function SystemMetrics() {
   useEffect(() => {
     const intervalId = setInterval(() => {
       setMetrics(prevMetrics => ({
-        cpu: getFluctuatedValue(prevMetrics.cpu, 5), // CPU fluctuates by +/- 5
+        cpu: {
+          used: getFluctuatedValue(prevMetrics.cpu.used, 5), // CPU fluctuates by +/- 5
+          total: 100,
+        },
         memory: {
           used: getFluctuatedValue(prevMetrics.memory.used, 1), // Memory fluctuates by +/- 1 GB
           total: prevMetrics.memory.total
@@ -89,7 +91,8 @@ export function SystemMetrics() {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <MetricCard
         title="CPU Usage"
-        value={metrics.cpu}
+        value={metrics.cpu.used}
+        total={metrics.cpu.total}
         unit="%"
         icon={<Cpu className="h-5 w-5 text-blue-600" />}
         color="bg-blue-50"

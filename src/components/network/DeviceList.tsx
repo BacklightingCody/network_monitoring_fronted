@@ -62,13 +62,12 @@ export function DeviceList() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className={`${
-                  device.status === 'online' 
-                    ? 'text-green-500' 
+                <div className={`${device.status === 'online'
+                    ? 'text-green-500'
                     : device.status === 'warning'
-                    ? 'text-yellow-500'
-                    : 'text-gray-400'
-                }`}>
+                      ? 'text-yellow-500'
+                      : 'text-gray-400'
+                  }`}>
                   {getDeviceIcon(device.type)}
                 </div>
                 <div>
@@ -77,13 +76,12 @@ export function DeviceList() {
                 </div>
               </div>
               <div className="text-right">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  device.status === 'online'
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${device.status === 'online'
                     ? 'bg-green-100 text-green-800'
                     : device.status === 'warning'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
                   {device.status}
                 </span>
                 <p className="text-xs text-gray-500 mt-1">{device.lastSeen}</p>

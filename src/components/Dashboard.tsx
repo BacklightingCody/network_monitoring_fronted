@@ -8,28 +8,30 @@ import { AlertsPanel } from './alerts/AlertsPanel';
 
 export function Dashboard() {
   return (
-    <Layout>
-      <div className="p-6 space-y-6">
-        <SystemMetrics />
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <NetworkStats />
+    <>
+      <Layout>
+        <div className="p-6 space-y-6">
+          <SystemMetrics />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <NetworkStats />
+            </div>
+            <div>
+              <ServerList />
+            </div>
           </div>
-          <div>
-            <ServerList />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <ServiceHealthPanel />
+            </div>
+            <div>
+              <AlertsPanel />
+            </div>
           </div>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <ServiceHealthPanel />
-          </div>
-          <div>
-            <AlertsPanel />
-          </div>
-        </div>
-      </div>
-    </Layout>
+      </Layout>
+    </>
   );
 }
