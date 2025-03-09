@@ -51,7 +51,6 @@ export function transformMetric(
       }
     });
   }
-
   return result;
 }
 
@@ -109,6 +108,7 @@ export function calculateAverageCpuUsage(data: any[], index: number = 1): number
   }
   // 提取所有核心的CPU利用率并转换为浮点数
   const coreValues = data.map((item) => parseFloat(item.value)).filter((val) => !isNaN(val));
+  console.log(coreValues,'kxc')
   if (coreValues.length === 0) {
     return 0;
   }
@@ -138,3 +138,108 @@ const cpuStateHistory = transformMetricsSeries(cpuMetrics, {
   keepLabels: ['core']
 });
 */
+
+/*
+options:{
+  formatTime: true,
+  average: true,
+  valueProcessor: (v: string) => parseFloat(v)
+  }
+*/
+
+
+export function aggregateMetricsData(
+  rawData: PrometheusMetric[],
+  options: {
+    formatTime?: boolean; // 是否格式化时间
+    average?: boolean; // 是否计算平均值
+    valueProcessor?: (value: string) => number; // 自定义数值处理
+  } = {}
+): MetricDataPoint | null {
+  if (!Array.isArray(rawData) || rawData.length === 0) {
+    return null;
+  }
+
+  const { formatTime = true, average = false, valueProcessor = (v: string) => parseFloat(v) } = options;
+
+  // 计算时间戳范围（取最后一个时间戳）
+  const lastTimestamp = rawData[rawData.length - 1].value[0];
+
+  // 提取所有的数值
+  const values = rawData.map(metric => valueProcessor(metric.value[1])).filter(v => !isNaN(v));
+
+  if (values.length === 0) {
+    return null;
+  }
+
+  // 计算总和或平均值
+  const total = values.reduce((acc, curr) => acc + curr, 0);
+  const resultValue = average ? total / values.length : total;
+
+  return {
+    time: formatTime ? new Date(lastTimestamp * 1000).toLocaleTimeString() : lastTimestamp,
+    value: parseFloat(resultValue.toFixed(2)) // 保留两位小数
+  };
+}
+
+// utils/transformCpuCStateData.ts
+
+interface CpuCStateData {
+  metric: {
+    core: string;
+    state: string;
+    instance: string;
+    job: string;
+    [key: string]: any;
+  };
+  value: [number, string];  // [timestamp, time in state (seconds)]
+}
+
+interface CStateResult {
+  c1: { name: string; value: number; data: any[] };
+  c2: { name: string; value: number; data: any[] };
+  c3: { name: string; value: number; data: any[] };
+}
+
+export const processCpuCStateData = (data: CpuCStateData[]): CStateResult => {
+  const result: CStateResult = {
+    c1: { name: 'c1', value: 0, data: [] },
+    c2: { name: 'c2', value: 0, data: [] },
+    c3: { name: 'c3', value: 0, data: [] }
+  };
+
+  data.forEach(item => {
+    const { state } = item.metric;  // C 状态（c1, c2, c3）
+    const timeSpentInState = parseFloat(item.value[1]);  // CPU 在该状态下消耗的时间（秒）
+    const time = new Date(item.value[0] * 1000).toISOString();  // 时间戳格式化为 ISO 字符串
+
+    // 累加每个状态的时间，并保存对应的时间数据
+    if (state === 'c1') {
+      result.c1.value += timeSpentInState;
+      result.c1.data.push({ time, value: timeSpentInState });
+    } else if (state === 'c2') {
+      result.c2.value += timeSpentInState;
+      result.c2.data.push({ time, value: timeSpentInState });
+    } else if (state === 'c3') {
+      result.c3.value += timeSpentInState;
+      result.c3.data.push({ time, value: timeSpentInState });
+    }
+  });
+
+  return result;
+};
+
+
+export const getCurrentCpuState = (cStateData: CStateResult): string => {
+  // 比较各个状态的 value，获取最大值
+  const maxStateValue = Math.max(cStateData.c1.value, cStateData.c2.value, cStateData.c3.value);
+
+  // 返回最大值对应的状态名称
+  if (maxStateValue === cStateData.c1.value) {
+    return 'c1';
+  } else if (maxStateValue === cStateData.c2.value) {
+    return 'c2';
+  } else {
+    return 'c3';
+  }
+};

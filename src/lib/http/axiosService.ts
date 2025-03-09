@@ -55,7 +55,7 @@ export class AxiosService {
     // 响应拦截
     this.instance.interceptors.response.use(
       response => {
-        console.log('response', response)
+        // console.log('response', response)
         const requestId = this.canceler.generateKey(response.config)
         this.queue.delete(requestId)
         

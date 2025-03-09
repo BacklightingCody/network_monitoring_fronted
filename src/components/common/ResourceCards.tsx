@@ -4,7 +4,7 @@ import { Progress } from "@/components/common/Progress"
 interface ResourceCardProps {
   icon: React.ReactNode
   title: string
-  value: number
+  value: number|string
   unit: string
   showProgress: boolean
 }
@@ -35,7 +35,7 @@ export default function ResourceCard({ icon, title, value, unit, showProgress }:
 
           <span className={`text-2xl font-bold ${getColorClass(value)}`}>{value}{unit}</span>
         </div>
-        {showProgress && <Progress value={value} className="h-2" indicatorClassName={getProgressColorClass(value)} />}
+        {showProgress && <Progress value={value as number} className="h-2" indicatorClassName={getProgressColorClass(value)} />}
       </CardContent>
     </Card>
   )

@@ -35,7 +35,6 @@ const http = new AxiosService(
   }
 )
 
-console.log(import.meta.env.VITE_API_BASE_URL)
 export default http
 export {
   AxiosService,
