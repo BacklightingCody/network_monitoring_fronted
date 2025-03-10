@@ -108,7 +108,6 @@ export function calculateAverageCpuUsage(data: any[], index: number = 1): number
   }
   // 提取所有核心的CPU利用率并转换为浮点数
   const coreValues = data.map((item) => parseFloat(item.value)).filter((val) => !isNaN(val));
-  console.log(coreValues,'kxc')
   if (coreValues.length === 0) {
     return 0;
   }

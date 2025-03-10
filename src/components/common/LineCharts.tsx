@@ -143,6 +143,7 @@ export default function LineCharts({
             tick={{ fill: "#000" }}
             tickLine={{ stroke: "#000" }}
             tickFormatter={(value) => `${value}${yAxisUnit}`}
+            width={100}
           />
           <Tooltip
             formatter={(value: number) => [`${value}${yAxisUnit}`, "值"]}

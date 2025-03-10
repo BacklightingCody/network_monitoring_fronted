@@ -4,7 +4,7 @@ import ResourceCard from '@/components/common/ResourceCards';
 import LineCharts from '@/components/common/LineCharts';
 import { Card, CardContent } from '@/components/common/Card';
 import { transformMetricsData, transformMetricsSeries, calculateAverageCpuUsage, aggregateMetricsData,processCpuCStateData,getCurrentCpuState } from '../utils/transformMetricsData';
-import {ChartHeight} from './constant'
+import {ChartHeight} from '../constant'
 import {
   getLogicalProcessorCount,
   getClockInterrupts,
@@ -17,6 +17,7 @@ import {
 } from '@/services/api/cpu';
 import { ResourceMetrics, ResourceCharts } from '@/components/common/ResourceSection';
 import { Cpu, HardDrive, CircuitBoard, Activity, Clock, Zap } from 'lucide-react';
+import { timeRangeMs } from '../constant';
 
 interface MetricData {
   time: string;
@@ -99,17 +100,17 @@ export function CpuMetrics() {
           // 处理 CPU 使用率数据
           // console.log(processorCount,'1111')
           // console.log(processorPerformance,'2222')
-          console.log(clockInterrupts,'3333')
+          // console.log(clockInterrupts,'3333')
           // console.log(coreFrequency,'4444')
           // console.log(cpuCState,'5555')
-          console.log(dpcs,'6666')
-          console.log(interrupts,'7777')
+          // console.log(dpcs,'6666')
+          // console.log(interrupts,'7777')
           const currentPerformance = calculateAverageCpuUsage(transformMetricsData(processorPerformance));
           const newPerformancePoint = {
             time: new Date().toLocaleTimeString(),
             value: currentPerformance
           };
-          console.log(newPerformancePoint,'-0000')
+
           // 处理中断相关数据
           const currentTime = new Date().toLocaleTimeString();
           const cStateData = processCpuCStateData(cpuCState);
@@ -130,10 +131,10 @@ export function CpuMetrics() {
           };
           // 更新历史数据
           metricsHistory.current = {
-            performance: [...metricsHistory.current.performance, newPerformancePoint].slice(-720),
-            clockInterrupts: [...metricsHistory.current.clockInterrupts, newMetricsPoints.clockInterrupts].slice(-720),
-            dpcs: [...metricsHistory.current.dpcs, newMetricsPoints.dpcs].slice(-720),
-            interrupts: [...metricsHistory.current.interrupts, newMetricsPoints.interrupts].slice(-720)
+            performance: [...metricsHistory.current.performance, newPerformancePoint].slice(-timeRangeMs['7d']),
+            clockInterrupts: [...metricsHistory.current.clockInterrupts, newMetricsPoints.clockInterrupts].slice(-timeRangeMs['7d']),
+            dpcs: [...metricsHistory.current.dpcs, newMetricsPoints.dpcs].slice(-timeRangeMs['7d']),
+            interrupts: [...metricsHistory.current.interrupts, newMetricsPoints.interrupts].slice(-timeRangeMs['7d'])
           };
 
           // 更新状态
@@ -214,7 +215,7 @@ export function CpuMetrics() {
 
         <ResourceCharts>
           <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-            <Card className="p-4 min-h-[400px]">
+            <Card className="p-4 min-h-[400px] z-10">
               <h3 className="text-lg font-semibold mb-2">CPU 使用率趋势</h3>
               <LineCharts
                 data={metrics.performanceTrend}
@@ -223,7 +224,7 @@ export function CpuMetrics() {
                 showLegend={false}
               />
             </Card>
-            <Card className="p-4 min-h-[400px]">
+            <Card className="p-4 min-h-[400px] z-10">
               <h3 className="text-lg font-semibold mb-2">中断和 DPC 趋势</h3>
               <LineCharts
                 data={[
