@@ -3,8 +3,8 @@ import ResourceSection from '@/components/common/ResourceSection';
 import ResourceCard from '@/components/common/ResourceCards';
 import LineCharts from '@/components/common/LineCharts';
 import { Card, CardContent } from '@/components/common/Card';
-import { transformMetricsData, transformMetricsSeries, calculateAverageCpuUsage, aggregateMetricsData,processCpuCStateData,getCurrentCpuState } from '../utils/transformMetricsData';
-import {ChartHeight} from '../constant'
+import { transformMetricsData, transformMetricsSeries, calculateAverageCpuUsage, aggregateMetricsData, processCpuCStateData, getCurrentCpuState } from '../utils/transformMetricsData';
+import { ChartHeight } from '../constant'
 import {
   getLogicalProcessorCount,
   getClockInterrupts,
@@ -234,7 +234,7 @@ export function CpuMetrics() {
                 ]}
                 timeRange="1h"
                 yAxisUnit="/秒"
-                yAxisDomain={[0,1000000]}
+                yAxisDomain={[0, 1000000]}
                 showLegend={true}
               />
             </Card>
