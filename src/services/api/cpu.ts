@@ -39,6 +39,10 @@ export async function getInterrupts() {
   return await getCpuUsage('/metrics/cpu/interrupts');
 }
 
+export async function getCpuAllMetrics() {
+  return await getCpuUsage('/metrics/cpu/all');
+}
+
 // 通用的 CPU 使用数据请求方法
 async function getCpuUsage(endpoint:string) {
   try {

@@ -1,5 +1,18 @@
 import http from '@/lib/http'
 
+interface DiskAllMetrics {
+  avgReadRequestsQueued: any[];
+  avgWriteRequestsQueued: any[];
+  freeBytes: any[];
+  idleSeconds: any[];
+  readBytesTotal: any[];
+  readLatencySeconds: any[];
+  readSeconds: any[];
+  writeBytesTotal: any[];
+  writeLatencySeconds: any[];
+  writeSeconds: any[];
+}
+
 // 获取磁盘平均读取请求队列
 export async function getAvgReadRequestsQueued() {
   return await getDiskMetric('/metrics/disk/avg-read-requests-queued');
@@ -48,6 +61,17 @@ export async function getWriteLatencySeconds() {
 // 获取磁盘写入总时间
 export async function getWriteSeconds() {
   return await getDiskMetric('/metrics/disk/write-seconds');
+}
+
+// 获取所有磁盘指标
+export async function getDiskAllMetrics(): Promise<DiskAllMetrics> {
+  try {
+    const response = await http.get('/metrics/disk/all');
+    return response;
+  } catch (error) {
+    console.error('Failed to fetch all disk metrics:', error);
+    throw error;
+  }
 }
 
 // 通用的磁盘数据请求方法
