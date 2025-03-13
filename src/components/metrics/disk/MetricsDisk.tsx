@@ -3,21 +3,11 @@ import ResourceSection from '@/components/common/ResourceSection';
 import ResourceCard from '@/components/common/ResourceCards';
 import LineCharts from '@/components/common/LineCharts';
 import { Card } from '@/components/common/Card';
-import {
-  getAvgReadRequestsQueued,
-  getAvgWriteRequestsQueued,
-  getFreeBytes,
-  getIdleSeconds,
-  getReadBytesTotal,
-  getReadLatencySeconds,
-  getReadSeconds,
-  getWriteBytesTotal,
-  getWriteLatencySeconds,
-  getWriteSeconds
-} from '@/services/api/disk';
+import { getDiskAllMetrics } from '@/services/api/disk';
 import { ResourceMetrics, ResourceCharts } from '@/components/common/ResourceSection';
 import { HardDrive, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { timeRangeMs } from '../constant';
+
 // 基础接口定义
 interface Metrics {
   metric: MetricInfo;
@@ -100,6 +90,10 @@ export function DiskMetrics() {
     }
   });
 
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const mounted = useRef(true);
+
   // 使用 useRef 存储历史数据
   const metricsHistory = useRef<{
     readSpeed: DiskTrendPoint[];
@@ -117,12 +111,6 @@ export function DiskMetrics() {
     writeQueue: []
   });
 
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // 使用 useRef 来跟踪组件是否已挂载
-  const mounted = useRef(true);
-
   // 转换字节为可读格式
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -133,7 +121,7 @@ export function DiskMetrics() {
   };
 
   // 处理状态指标数据
-  const processStateMetrics = (metrics: Metrics[]): DiskSpace[] => {
+  const processStateMetrics = (metrics: any[]): DiskSpace[] => {
     if (!Array.isArray(metrics)) {
       console.warn('Invalid metric data:', metrics);
       return [];
@@ -145,7 +133,7 @@ export function DiskMetrics() {
   };
 
   // 处理趋势指标数据
-  const processTrendMetrics = (metrics: Metrics[]): DiskVolumeMetric[] => {
+  const processTrendMetrics = (metrics: any[]): DiskVolumeMetric[] => {
     if (!Array.isArray(metrics)) {
       console.warn('Invalid metric data:', metrics);
       return [];
@@ -180,49 +168,42 @@ export function DiskMetrics() {
     return metrics.find(m => m.volume === volume)?.value || 0;
   };
 
-  const updateMetrics = useCallback(async () => {
-    if (!mounted.current) return;
+  const fetchData = useCallback(async () => {
+    if (!mounted.current || isLoading) return;
 
     try {
       console.log('开始获取磁盘指标数据...');
       setIsLoading(true);
       setError(null);
 
-      const [
+      const allMetrics = await getDiskAllMetrics();
+
+      if (!mounted.current) return;
+
+      const {
         freeBytes,
-        readLatency,
-        writeLatency,
+        readLatencySeconds,
+        writeLatencySeconds,
         idleSeconds,
-        readBytes,
-        writeBytes,
-        readTime,
-        writeTime,
-        readQueue,
-        writeQueue
-      ] = await Promise.all([
-        getFreeBytes(),
-        getReadLatencySeconds(),
-        getWriteLatencySeconds(),
-        getIdleSeconds(),
-        getReadBytesTotal(),
-        getWriteBytesTotal(),
-        getReadSeconds(),
-        getWriteSeconds(),
-        getAvgReadRequestsQueued(),
-        getAvgWriteRequestsQueued()
-      ]);
-      console.log(11)
+        readBytesTotal,
+        writeBytesTotal,
+        readSeconds,
+        writeSeconds,
+        avgReadRequestsQueued: readQueue,
+        avgWriteRequestsQueued: writeQueue
+      } = allMetrics;
+
       // 处理状态数据
       const freeBytesMetrics = processStateMetrics(freeBytes);
       const totalFreeSpace = calculateTotal(freeBytesMetrics);
-      const readLatencyMetrics = processStateMetrics(readLatency);
-      const writeLatencyMetrics = processStateMetrics(writeLatency);
+      const readLatencyMetrics = processStateMetrics(readLatencySeconds);
+      const writeLatencyMetrics = processStateMetrics(writeLatencySeconds);
 
       // 处理趋势数据
-      const readBytesMetrics = processTrendMetrics(readBytes);
-      const writeBytesMetrics = processTrendMetrics(writeBytes);
-      const readTimeMetrics = processTrendMetrics(readTime);
-      const writeTimeMetrics = processTrendMetrics(writeTime);
+      const readBytesMetrics = processTrendMetrics(readBytesTotal);
+      const writeBytesMetrics = processTrendMetrics(writeBytesTotal);
+      const readTimeMetrics = processTrendMetrics(readSeconds);
+      const writeTimeMetrics = processTrendMetrics(writeSeconds);
 
       // 计算读写速度
       const readSpeedMetrics = calculateSpeed(readBytesMetrics, readTimeMetrics);
@@ -241,11 +222,11 @@ export function DiskMetrics() {
         },
         readLatency: {
           time: currentTime,
-          value: readLatencyMetrics.reduce((sum, m) => sum + m.value, 0) / readLatencyMetrics.length
+          value: readLatencyMetrics.reduce((sum, m) => sum + m.value, 0) / readLatencyMetrics.length || 0
         },
         writeLatency: {
           time: currentTime,
-          value: writeLatencyMetrics.reduce((sum, m) => sum + m.value, 0) / writeLatencyMetrics.length
+          value: writeLatencyMetrics.reduce((sum, m) => sum + m.value, 0) / writeLatencyMetrics.length || 0
         },
         readQueue: {
           time: currentTime,
@@ -266,9 +247,9 @@ export function DiskMetrics() {
         readQueue: [...metricsHistory.current.readQueue, currentMetrics.readQueue].slice(-timeRangeMs['7d']),
         writeQueue: [...metricsHistory.current.writeQueue, currentMetrics.writeQueue].slice(-timeRangeMs['7d'])
       };
-
+      console.log(metricsHistory.current)
       // 更新状态
-      setMetrics(prev=>({
+      setMetrics((prev) => ({
         ...prev,
         freeSpace: freeBytesMetrics,
         totalFreeSpace,
@@ -292,34 +273,38 @@ export function DiskMetrics() {
 
     } catch (error) {
       console.error('获取磁盘指标失败:', error);
-      setError('获取数据失败，请稍后重试');
+      if (mounted.current) {
+        setError('获取数据失败，请稍后重试');
+      }
     } finally {
-      setIsLoading(false);
+      if (mounted.current) {
+        setIsLoading(false);
+      }
     }
-  }, []);
+  }, [isLoading]);
 
   useEffect(() => {
-    mounted.current = true;  // 组件挂载时设置为 true
-    console.log('磁盘指标组件已挂载');  // 更有意义的日志
+    mounted.current = true;
+    console.log('磁盘指标组件已挂载');
 
     // 立即获取一次数据
-    updateMetrics();
+    fetchData();
 
     // 设置定时器
     const intervalId = window.setInterval(() => {
-      console.log('定时获取磁盘指标...');  // 添加定时器执行的日志
-      updateMetrics();
+      console.log('定时获取磁盘指标...');
+      fetchData();
     }, 5000);
 
     // 清理函数
     return () => {
-      mounted.current = false;  // 组件卸载时设置为 false
+      mounted.current = false;
       if (intervalId) {
         clearInterval(intervalId);
-        console.log('磁盘指标定时器已清除');  // 添加清理日志
+        console.log('磁盘指标定时器已清除');
       }
     };
-  }, []);  // 添加 updateMetrics 作为依赖
+  }, []);
 
   if (error) {
     return <div className="text-red-500 text-center p-4">{error}</div>;
