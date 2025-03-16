@@ -123,7 +123,7 @@ export function DiskMetrics() {
   // 处理状态指标数据
   const processStateMetrics = (metrics: any[]): DiskSpace[] => {
     if (!Array.isArray(metrics)) {
-      console.warn('Invalid metric data:', metrics);
+      // console.warn('Invalid metric data:', metrics);
       return [];
     }
     return metrics.map(item => ({
@@ -135,7 +135,7 @@ export function DiskMetrics() {
   // 处理趋势指标数据
   const processTrendMetrics = (metrics: any[]): DiskVolumeMetric[] => {
     if (!Array.isArray(metrics)) {
-      console.warn('Invalid metric data:', metrics);
+      // console.warn('Invalid metric data:', metrics);
       return [];
     }
 
@@ -172,7 +172,7 @@ export function DiskMetrics() {
     if (!mounted.current || isLoading) return;
 
     try {
-      console.log('开始获取磁盘指标数据...');
+      // console.log('开始获取磁盘指标数据...');
       setIsLoading(true);
       setError(null);
 
@@ -247,7 +247,7 @@ export function DiskMetrics() {
         readQueue: [...metricsHistory.current.readQueue, currentMetrics.readQueue].slice(-timeRangeMs['7d']),
         writeQueue: [...metricsHistory.current.writeQueue, currentMetrics.writeQueue].slice(-timeRangeMs['7d'])
       };
-      console.log(metricsHistory.current)
+      // console.log(metricsHistory.current)
       // 更新状态
       setMetrics((prev) => ({
         ...prev,
@@ -285,14 +285,14 @@ export function DiskMetrics() {
 
   useEffect(() => {
     mounted.current = true;
-    console.log('磁盘指标组件已挂载');
+    // console.log('磁盘指标组件已挂载');
 
     // 立即获取一次数据
     fetchData();
 
     // 设置定时器
     const intervalId = window.setInterval(() => {
-      console.log('定时获取磁盘指标...');
+      // console.log('定时获取磁盘指标...');
       fetchData();
     }, 5000);
 
@@ -301,7 +301,7 @@ export function DiskMetrics() {
       mounted.current = false;
       if (intervalId) {
         clearInterval(intervalId);
-        console.log('磁盘指标定时器已清除');
+        // console.log('磁盘指标定时器已清除');
       }
     };
   }, []);

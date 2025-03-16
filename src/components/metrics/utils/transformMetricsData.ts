@@ -37,7 +37,7 @@ export function transformMetric(
 
   const [timestamp, strValue] = data.value;
   const value = valueProcessor(strValue);
-  
+
   const result: MetricDataPoint = {
     time: formatTime ? new Date(timestamp * 1000).toLocaleTimeString() : timestamp,
     value: isNaN(value) ? 0 : value
@@ -83,10 +83,10 @@ export function transformMetricsSeries(
   }
 ): { name: string; data: MetricDataPoint[] }[] {
   const { groupBy, ...transformOptions } = options;
-  
+
   // 按指定标签分组
   const groups = new Map<string, PrometheusMetric[]>();
-  
+
   rawData.forEach(metric => {
     const groupValue = metric.metric[groupBy] || 'default';
     if (!groups.has(groupValue)) {
@@ -241,4 +241,46 @@ export const getCurrentCpuState = (cStateData: CStateResult): string => {
   } else {
     return 'c3';
   }
+};
+
+interface TransformedMetric {
+  metric: {
+    [key: string]: string;
+  };
+  time: number;
+  value: string;
+}
+
+export const extractMetrics = (
+  metrics: PrometheusMetric[],
+  keysToKeep: string | string[] = "__name__" // 默认保留 __name__
+): TransformedMetric[] => {
+  // 1. 检查输入是否为非空数组
+  if (!Array.isArray(metrics) || metrics.length === 0) {
+    return [];
+  }
+
+  // 2. 统一处理 keysToKeep 为数组形式
+  const keys = Array.isArray(keysToKeep) ? keysToKeep : [keysToKeep];
+
+  // 3. 映射处理每个对象
+  return metrics.map((item) => {
+    // 提取 metric 中指定的属性
+    const filteredMetric: { [key: string]: string } = {};
+    keys.forEach((key) => {
+      if (key in item.metric) {
+        filteredMetric[key] = item.metric[key];
+      }
+    });
+
+    // 从 value 中提取 time 和 value
+    const [time, value] = item.value;
+
+    // 返回新对象
+    return {
+      metric: filteredMetric,
+      time, // value[0] 作为时间戳
+      value, // value[1] 作为值
+    };
+  });
 };

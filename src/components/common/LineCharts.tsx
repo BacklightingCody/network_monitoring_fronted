@@ -43,6 +43,30 @@ const parseTime = (timeStr: string): Date => {
   return new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes, seconds);
 };
 
+// 格式化时间轴标签
+const formatXAxis = (tickItem: string) => {
+  return tickItem;
+};
+
+// 自定义时间轴刻度
+const generateTimeAxisTicks = (data: DataPoint[]): string[] => {
+  if (data.length <= 1) return data.length ? [data[0].time] : [];
+
+  const interval = Math.max(1, Math.floor(data.length / 8)); // 控制显示大约 8 个刻度
+  const ticks: string[] = [];
+
+  for (let i = 0; i < data.length; i += interval) {
+    ticks.push(data[i].time);
+  }
+
+  // 确保最后一个点被包含
+  if (ticks[ticks.length - 1] !== data[data.length - 1].time) {
+    ticks.push(data[data.length - 1].time);
+  }
+
+  return ticks;
+};
+
 export default function LineCharts({
   data,
   timeRange = "1h",
@@ -90,15 +114,11 @@ export default function LineCharts({
     return sortedData.filter(point => parseTime(point.time) > cutoffTime);
   }, [sortedData, selectedRange]);
 
-  // 确定X轴的刻度间隔
-  const getXAxisInterval = () => {
-    const dataLength = isSeriesData(displayData) 
-      ? displayData[0]?.data.length || 0 
-      : displayData.length;
-    
-    if (dataLength <= 10) return 0;
-    return Math.max(1, Math.floor(dataLength / 10));
-  };
+  // 计算时间轴刻度
+  const xAxisTicks = useMemo(() => {
+    const dataPoints = isSeriesData(displayData) ? displayData[0]?.data : displayData;
+    return generateTimeAxisTicks(dataPoints || []);
+  }, [displayData]);
 
   return (
     <div className="w-full">
@@ -133,10 +153,12 @@ export default function LineCharts({
             dataKey="time"
             tick={{ fill: "#000" }}
             tickLine={{ stroke: "#000" }}
-            interval={getXAxisInterval()}
+            ticks={xAxisTicks}
             angle={-45}
             textAnchor="end"
             height={60}
+            tickFormatter={formatXAxis}
+            minTickGap={30}
           />
           <YAxis
             domain={yAxisDomain}

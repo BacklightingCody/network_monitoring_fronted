@@ -4,6 +4,7 @@ import { ResourceUsageHistory } from '../components/resources/ResourceUsageHisto
 import { ResourceAlerts } from '../components/resources/ResourceAlerts';
 import { CpuMetrics } from '@/components/metrics/cpu/MetricsCpu';
 import { DiskMetrics } from '@/components/metrics/disk/MetricsDisk';
+import { NetworkMetrics } from '@/components/metrics/network/MetricsNet';
 export function Resources() {
   return (
     <div className="space-y-6">
@@ -11,6 +12,7 @@ export function Resources() {
       <SystemMetrics />
       <CpuMetrics />
       <DiskMetrics />
+      <NetworkMetrics />
       <ResourceUsageHistory />
       <ResourceAlerts />
     </div>

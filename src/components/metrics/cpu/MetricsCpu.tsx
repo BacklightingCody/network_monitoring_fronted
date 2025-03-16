@@ -62,7 +62,7 @@ export function CpuMetrics() {
     if (!mounted.current || isLoading) return;
 
     try {
-      console.log('开始获取CPU指标数据...');
+      // console.log('开始获取CPU指标数据...');
       setIsLoading(true);
       setError(null);
 
@@ -143,14 +143,14 @@ export function CpuMetrics() {
 
   useEffect(() => {
     mounted.current = true;
-    console.log('CPU指标组件已挂载');
+    // console.log('CPU指标组件已挂载');
 
     // 立即获取一次数据
     fetchData();
-
     // 设置定时器
     const intervalId = window.setInterval(() => {
-      console.log('定时获取CPU指标...');
+      // console.log('定时获取CPU指标...');
+      // console.log(metrics.clockInterruptsTrend,'中断')
       fetchData();
     }, 5000);
 
@@ -159,7 +159,7 @@ export function CpuMetrics() {
       mounted.current = false;
       if (intervalId) {
         clearInterval(intervalId);
-        console.log('CPU指标定时器已清除');
+        // console.log('CPU指标定时器已清除');
       }
     };
   }, []);
