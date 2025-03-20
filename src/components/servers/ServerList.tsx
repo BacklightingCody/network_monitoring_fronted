@@ -1,5 +1,5 @@
 // import React from 'react';
-import { ServerStatus } from '../../types/monitoring';
+import { ServerStatus } from '../../utils/types/monitoring';
 import { Server, CheckCircle, XCircle } from 'lucide-react';
 
 export function ServerList() {

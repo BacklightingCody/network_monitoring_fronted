@@ -5,6 +5,7 @@ import { Resources } from '../pages/Resources';
 import { NetworkDevices } from '../pages/NetworkDevices';
 import { Topology } from '../pages/Topology';
 import { Settings } from '../pages/Settings';
+import { SystemLogs } from '../pages/SystemLogs';
 
 export const router = createBrowserRouter([
   {
@@ -16,6 +17,7 @@ export const router = createBrowserRouter([
       { path: '/network-devices', element: <NetworkDevices /> },
       { path: '/topology', element: <Topology /> },
       { path: '/settings', element: <Settings /> },
+      { path: '/logs', element: <SystemLogs /> }
     ],
   },
 ]);

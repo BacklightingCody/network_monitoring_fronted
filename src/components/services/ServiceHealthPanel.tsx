@@ -1,5 +1,5 @@
 // import React from 'react';
-import { ServiceHealth } from '../../types/monitoring';
+import { ServiceHealth } from '../../utils/types/monitoring';
 import { Activity, CheckCircle, AlertTriangle, XOctagon } from 'lucide-react';
 
 export function ServiceHealthPanel() {

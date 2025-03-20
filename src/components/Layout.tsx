@@ -1,6 +1,6 @@
 // import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Monitor, Server, Network, Share2, Settings } from 'lucide-react';
+import { Monitor, Server, Network, Share2, Settings, Library } from 'lucide-react';
 
 const navigation = [
   { name: '监控概览', path: '/', icon: Monitor },
@@ -8,6 +8,7 @@ const navigation = [
   { name: '网络设备', path: '/network-devices', icon: Network },
   { name: '拓扑图', path: '/topology', icon: Share2 },
   { name: '系统设置', path: '/settings', icon: Settings },
+  { name: '系统日志', path: '/logs', icon: Library }
 ];
 
 export function Layout() {
@@ -30,8 +31,8 @@ export function Layout() {
                       key={path}
                       to={path}
                       className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 ${location.pathname === path
-                          ? 'border-indigo-500 text-gray-900'
-                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        ? 'border-indigo-500 text-gray-900'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                         }`}
                     >
                       <Icon className="h-4 w-4 mr-2" />
