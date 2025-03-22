@@ -321,6 +321,7 @@ export function DiskMetrics() {
               unit=""
               showProgress={false}
               icon={<HardDrive className="h-6 w-6 text-blue-500" />}
+              colorScheme='emerald'
             />
             <ResourceCard
               title="C盘剩余空间"
@@ -328,6 +329,7 @@ export function DiskMetrics() {
               unit=""
               showProgress={false}
               icon={<HardDrive className="h-6 w-6 text-blue-500" />}
+              colorScheme='emerald'
             />
             <ResourceCard
               title="D盘剩余空间"
@@ -335,6 +337,7 @@ export function DiskMetrics() {
               unit=""
               showProgress={false}
               icon={<HardDrive className="h-6 w-6 text-blue-500" />}
+              colorScheme='emerald'
             />
             <ResourceCard
               title="总读写速度"
@@ -342,6 +345,7 @@ export function DiskMetrics() {
               unit="/s"
               showProgress={false}
               icon={<ArrowDownToLine className="h-6 w-6 text-green-500" />}
+              colorScheme='emerald'
             />
           </div>
         </ResourceMetrics>

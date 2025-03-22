@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useThemeStore } from "@/stores/theme";
 
 interface DataPoint {
   time: string;
@@ -75,6 +76,18 @@ export default function LineCharts({
   showLegend = true,
 }: LineChartsProps) {
   const [selectedRange, setSelectedRange] = useState(timeRange);
+  const theme = useThemeStore((state) => state.theme);
+
+  // 定义主题相关的颜色
+  const chartColors = {
+    grid: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+    text: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+    tooltip: {
+      bg: theme === 'dark' ? 'hsl(var(--card))' : 'hsl(var(--card))',
+      border: theme === 'dark' ? 'hsl(var(--border))' : 'hsl(var(--border))',
+      text: theme === 'dark' ? 'hsl(var(--card-foreground))' : 'hsl(var(--card-foreground))'
+    }
+  };
 
   // 处理数据，确保按时间排序
   const sortedData = useMemo(() => {
@@ -121,9 +134,19 @@ export default function LineCharts({
   }, [displayData]);
 
   return (
-    <div className="w-full">
+    <div className="w-full h-[250px]">
       <div className="flex justify-end mb-2 space-x-2">
-        {["30m", "1h", "24h", "72h", "7d"].map((range) => (
+        <button
+          className={`px-2 py-1 rounded transition-colors ${
+            selectedRange === '1h'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          }`}
+          onClick={() => setSelectedRange('1h')}
+        >
+          1小时
+        </button>
+        {["30m", "24h", "72h", "7d"].map((range) => (
           <button
             key={range}
             className={`px-2 py-1 rounded ${
@@ -133,8 +156,6 @@ export default function LineCharts({
           >
             {range === "30m"
               ? "30分钟"
-              : range === "1h"
-              ? "1小时"
               : range === "24h"
               ? "24小时"
               : range === "72h"
@@ -143,35 +164,37 @@ export default function LineCharts({
           </button>
         ))}
       </div>
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart 
-          data={isSeriesData(displayData) ? displayData[0].data : displayData}
-          margin={{ top: 5, right: 10, left: 0, bottom: 20 }}
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={!isSeriesData(displayData) ? displayData : undefined}
+          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#444" />
+          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
           <XAxis
             dataKey="time"
-            tick={{ fill: "#000" }}
-            tickLine={{ stroke: "#000" }}
+            tick={{ fill: chartColors.text }}
+            tickLine={{ stroke: chartColors.text }}
             ticks={xAxisTicks}
             angle={-45}
             textAnchor="end"
             height={60}
             tickFormatter={formatXAxis}
             minTickGap={30}
+            interval="preserveStartEnd"
           />
           <YAxis
             domain={yAxisDomain}
-            tick={{ fill: "#000" }}
-            tickLine={{ stroke: "#000" }}
+            tick={{ fill: chartColors.text }}
+            tickLine={{ stroke: chartColors.text }}
             tickFormatter={(value) => `${value}${yAxisUnit}`}
             width={100}
           />
           <Tooltip
             formatter={(value: number) => [`${value}${yAxisUnit}`, "值"]}
             contentStyle={{
-              backgroundColor: "hsl(var(--card))",
-              borderColor: "hsl(var(--border))",
+              backgroundColor: chartColors.tooltip.bg,
+              borderColor: chartColors.tooltip.border,
+              color: chartColors.tooltip.text
             }}
           />
           {showLegend && <Legend />}

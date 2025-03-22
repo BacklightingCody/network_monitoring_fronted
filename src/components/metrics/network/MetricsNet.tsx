@@ -69,7 +69,7 @@ interface NetworkMetricsState {
     unknown: number;
   };
   nicInfo: NetworkNicInfo[];
-  
+
   // 趋势数据
   trafficTrend: {
     bytesReceived: NetworkTrendPoint[];
@@ -352,6 +352,7 @@ export function NetworkMetrics() {
               unit=""
               showProgress={true}
               icon={<Network className="h-6 w-6 text-blue-500" />}
+              colorScheme='cyan'
             />
             <ResourceCard
               title="总流量"
@@ -359,6 +360,7 @@ export function NetworkMetrics() {
               unit=""
               showProgress={false}
               icon={<Wifi className="h-6 w-6 text-green-500" />}
+              colorScheme='cyan'
             />
             <ResourceCard
               title="接收流量"
@@ -366,6 +368,7 @@ export function NetworkMetrics() {
               unit=""
               showProgress={false}
               icon={<ArrowDown className="h-6 w-6 text-cyan-500" />}
+              colorScheme='cyan'
             />
             <ResourceCard
               title="发送流量"
@@ -373,6 +376,7 @@ export function NetworkMetrics() {
               unit=""
               showProgress={false}
               icon={<ArrowUp className="h-6 w-6 text-purple-500" />}
+              colorScheme='cyan'
             />
           </div>
 
@@ -384,6 +388,7 @@ export function NetworkMetrics() {
               unit="个"
               showProgress={false}
               icon={<Server className="h-6 w-6 text-indigo-500" />}
+              colorScheme='cyan'
             />
             <ResourceCard
               title="接收数据包"
@@ -391,6 +396,7 @@ export function NetworkMetrics() {
               unit="个"
               showProgress={false}
               icon={<ArrowDown className="h-6 w-6 text-green-500" />}
+              colorScheme='cyan'
             />
             <ResourceCard
               title="发送数据包"
@@ -398,6 +404,7 @@ export function NetworkMetrics() {
               unit="个"
               showProgress={false}
               icon={<ArrowUp className="h-6 w-6 text-blue-500" />}
+              colorScheme='cyan'
             />
             <ResourceCard
               title="输出队列长度"
@@ -405,6 +412,7 @@ export function NetworkMetrics() {
               unit=""
               showProgress={true}
               icon={<Server className="h-6 w-6 text-yellow-500" />}
+              colorScheme='cyan'
             />
           </div>
 
@@ -416,6 +424,7 @@ export function NetworkMetrics() {
               unit="个"
               showProgress={false}
               icon={<AlertTriangle className="h-6 w-6 text-red-500" />}
+              colorScheme='cyan'
             />
             <ResourceCard
               title="接收错误"
@@ -423,6 +432,7 @@ export function NetworkMetrics() {
               unit="个"
               showProgress={false}
               icon={<AlertTriangle className="h-6 w-6 text-orange-500" />}
+              colorScheme='cyan'
             />
             <ResourceCard
               title="未知协议包"
@@ -430,6 +440,7 @@ export function NetworkMetrics() {
               unit="个"
               showProgress={false}
               icon={<AlertTriangle className="h-6 w-6 text-yellow-500" />}
+              colorScheme='cyan'
             />
             <ResourceCard
               title="发送丢包"
@@ -437,6 +448,7 @@ export function NetworkMetrics() {
               unit="个"
               showProgress={false}
               icon={<AlertTriangle className="h-6 w-6 text-pink-500" />}
+              colorScheme='cyan'
             />
             <ResourceCard
               title="接收丢包"
@@ -444,6 +456,7 @@ export function NetworkMetrics() {
               unit="个"
               showProgress={false}
               icon={<AlertTriangle className="h-6 w-6 text-purple-500" />}
+              colorScheme='cyan'
             />
             <ResourceCard
               title="总错误数"
@@ -457,6 +470,7 @@ export function NetworkMetrics() {
               unit="个"
               showProgress={false}
               icon={<AlertTriangle className="h-6 w-6 text-red-600" />}
+              colorScheme='cyan'
             />
           </div>
 

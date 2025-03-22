@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react"
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { useThemeStore } from "@/stores/theme"
 
 import { Button } from "@/components/ui/Button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card"
@@ -116,6 +117,7 @@ export function SystemLogs() {
   const [levelFilter, setLevelFilter] = useState("all")
   const [serviceFilter, setServiceFilter] = useState("all")
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const theme = useThemeStore((state) => state.theme) || 'light'
 
   // Simulate real-time updates
   useEffect(() => {
@@ -179,97 +181,98 @@ export function SystemLogs() {
     }
   }
 
+  // 修改图表颜色
+  const chartColors = {
+    grid: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+    text: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+    tooltip: {
+      bg: theme === 'dark' ? 'hsl(240 10% 3.9%)' : 'hsl(0 0% 100%)',
+      border: theme === 'dark' ? 'hsl(240 3.7% 15.9%)' : 'hsl(240 5.9% 90%)',
+      text: theme === 'dark' ? 'hsl(0 0% 98%)' : 'hsl(240 10% 3.9%)'
+    }
+  };
+
+  // 修改进度条背景色
+  const progressBg = theme === 'dark' ? 'bg-muted' : 'bg-secondary';
+
+  // 修改图表渐变色
+  const gradientColors = {
+    cpu: theme === 'dark' ? '#3b82f6' : '#2563eb',
+    memory: theme === 'dark' ? '#a855f7' : '#7c3aed',
+    disk: theme === 'dark' ? '#14b8a6' : '#0d9488'
+  };
+
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white">
-      {/* <header className="sticky top-0 z-10 border-b border-zinc-800 bg-black/80 backdrop-blur-sm">
-        <div className="flex h-16 items-center px-6">
-          <div className="flex items-center gap-2 font-semibold">
-            <Server className="h-6 w-6 text-blue-400" />
-            <span className="text-xl">SysMonitor</span>
-          </div>
-
-          <div className="ml-auto flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-sm text-zinc-400">Live</span>
-            </div>
-            <Button variant="outline" size="sm" className="border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700">
-              <Shield className="mr-2 h-4 w-4 text-blue-400" />
-              System Status
-            </Button>
-          </div>
-        </div>
-      </header> */}
-
-      <main className="flex-1 p-6">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <main className="flex-1 p-6 bg-background">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-zinc-200 text-sm font-medium">CPU Usage</CardTitle>
+              <CardTitle className="text-foreground text-sm font-medium">CPU Usage</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-zinc-100">78%</div>
+                <div className="text-2xl font-bold text-foreground">78%</div>
                 <div className="text-emerald-500 flex items-center">
                   <Activity className="h-4 w-4 mr-1" />
                   Normal
                 </div>
               </div>
-              <div className="mt-4 h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
+              <div className={`mt-4 h-1 w-full ${progressBg} rounded-full overflow-hidden`}>
                 <div className="bg-blue-500 h-full rounded-full" style={{ width: "78%" }}></div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-zinc-200 text-sm font-medium">Memory Usage</CardTitle>
+              <CardTitle className="text-foreground text-sm font-medium">Memory Usage</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-zinc-100">64%</div>
+                <div className="text-2xl font-bold text-foreground">64%</div>
                 <div className="text-emerald-500 flex items-center">
                   <Activity className="h-4 w-4 mr-1" />
                   Normal
                 </div>
               </div>
-              <div className="mt-4 h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
+              <div className={`mt-4 h-1 w-full ${progressBg} rounded-full overflow-hidden`}>
                 <div className="bg-purple-500 h-full rounded-full" style={{ width: "64%" }}></div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-zinc-200 text-sm font-medium">Disk I/O</CardTitle>
+              <CardTitle className="text-foreground text-sm font-medium">Disk I/O</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-zinc-100">42 MB/s</div>
+                <div className="text-2xl font-bold text-foreground">42 MB/s</div>
                 <div className="text-emerald-500 flex items-center">
                   <Activity className="h-4 w-4 mr-1" />
                   Normal
                 </div>
               </div>
-              <div className="mt-4 h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
+              <div className={`mt-4 h-1 w-full ${progressBg} rounded-full overflow-hidden`}>
                 <div className="bg-teal-500 h-full rounded-full" style={{ width: "42%" }}></div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-zinc-200 text-sm font-medium">Network</CardTitle>
+              <CardTitle className="text-foreground text-sm font-medium">Network</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-zinc-100">8.2 MB/s</div>
+                <div className="text-2xl font-bold text-foreground">8.2 MB/s</div>
                 <div className="text-emerald-500 flex items-center">
                   <Activity className="h-4 w-4 mr-1" />
                   Normal
                 </div>
               </div>
-              <div className="mt-4 h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
+              <div className={`mt-4 h-1 w-full ${progressBg} rounded-full overflow-hidden`}>
                 <div className="bg-cyan-500 h-full rounded-full" style={{ width: "35%" }}></div>
               </div>
             </CardContent>
@@ -277,73 +280,79 @@ export function SystemLogs() {
         </div>
 
         <div className="mt-6 grid gap-6 md:grid-cols-2">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border shadow-sm">
             <CardHeader>
-              <CardTitle className="text-zinc-200">System Performance</CardTitle>
-              <CardDescription className="text-zinc-400">24-hour monitoring</CardDescription>
+              <CardTitle className="text-foreground">System Performance</CardTitle>
+              <CardDescription className="text-muted-foreground">24-hour monitoring</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={250} className="bg-background">
                 <AreaChart data={performanceData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
+                      <stop offset="5%" stopColor={gradientColors.cpu} stopOpacity={0.8} />
+                      <stop offset="95%" stopColor={gradientColors.cpu} stopOpacity={0.1} />
                     </linearGradient>
                     <linearGradient id="colorMemory" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0.1} />
+                      <stop offset="5%" stopColor={gradientColors.memory} stopOpacity={0.8} />
+                      <stop offset="95%" stopColor={gradientColors.memory} stopOpacity={0.1} />
                     </linearGradient>
                     <linearGradient id="colorDisk" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.1} />
+                      <stop offset="5%" stopColor={gradientColors.disk} stopOpacity={0.8} />
+                      <stop offset="95%" stopColor={gradientColors.disk} stopOpacity={0.1} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                  <XAxis dataKey="time" stroke="#666" />
-                  <YAxis stroke="#666" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false}  />
+                  <XAxis dataKey="time" stroke={chartColors.text} />
+                  <YAxis stroke={chartColors.text} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "#222", borderColor: "#444" }}
-                    itemStyle={{ color: "#fff" }}
-                    labelStyle={{ color: "#999" }}
+                    contentStyle={{
+                      backgroundColor: chartColors.tooltip.bg,
+                      borderColor: chartColors.tooltip.border,
+                    }}
+                    itemStyle={{ color: chartColors.tooltip.text }}
+                    labelStyle={{ color: chartColors.text }}
                   />
-                  <Area type="monotone" dataKey="cpu" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCpu)" />
-                  <Area type="monotone" dataKey="memory" stroke="#a855f7" fillOpacity={1} fill="url(#colorMemory)" />
-                  <Area type="monotone" dataKey="disk" stroke="#14b8a6" fillOpacity={1} fill="url(#colorDisk)" />
+                  <Area type="monotone" dataKey="cpu" stroke={gradientColors.cpu} fillOpacity={1} fill="url(#colorCpu)" />
+                  <Area type="monotone" dataKey="memory" stroke={gradientColors.memory} fillOpacity={1} fill="url(#colorMemory)" />
+                  <Area type="monotone" dataKey="disk" stroke={gradientColors.disk} fillOpacity={1} fill="url(#colorDisk)" />
                 </AreaChart>
               </ResponsiveContainer>
               <div className="mt-2 flex justify-center gap-4">
                 <div className="flex items-center">
                   <div className="mr-1 h-3 w-3 rounded-full bg-blue-500"></div>
-                  <span className="text-xs text-zinc-400">CPU</span>
+                  <span className="text-xs text-muted-foreground">CPU</span>
                 </div>
                 <div className="flex items-center">
                   <div className="mr-1 h-3 w-3 rounded-full bg-purple-500"></div>
-                  <span className="text-xs text-zinc-400">Memory</span>
+                  <span className="text-xs text-muted-foreground">Memory</span>
                 </div>
                 <div className="flex items-center">
                   <div className="mr-1 h-3 w-3 rounded-full bg-teal-500"></div>
-                  <span className="text-xs text-zinc-400">Disk</span>
+                  <span className="text-xs text-muted-foreground">Disk</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border shadow-sm">
             <CardHeader>
-              <CardTitle className="text-zinc-200">Error Distribution</CardTitle>
-              <CardDescription className="text-zinc-400">By service category</CardDescription>
+              <CardTitle className="text-foreground">Error Distribution</CardTitle>
+              <CardDescription className="text-muted-foreground">By service category</CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={errorDistribution} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={true} vertical={false} />
-                  <XAxis dataKey="name" stroke="#666" />
-                  <YAxis stroke="#666" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} horizontal={true} vertical={false} />
+                  <XAxis dataKey="name" stroke={chartColors.text} />
+                  <YAxis stroke={chartColors.text} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "#222", borderColor: "#444" }}
-                    itemStyle={{ color: "#fff" }}
-                    labelStyle={{ color: "#999" }}
+                    contentStyle={{
+                      backgroundColor: chartColors.tooltip.bg,
+                      borderColor: chartColors.tooltip.border,
+                    }}
+                    itemStyle={{ color: chartColors.tooltip.text }}
+                    labelStyle={{ color: chartColors.text }}
                   />
                   <Bar dataKey="value" fill="#ef4444" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -353,19 +362,19 @@ export function SystemLogs() {
         </div>
 
         <div className="mt-6">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border shadow-sm">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-zinc-200">System Logs</CardTitle>
-                  <CardDescription className="text-zinc-400">Real-time log monitoring</CardDescription>
+                  <CardTitle className="text-foreground">System Logs</CardTitle>
+                  <CardDescription className="text-muted-foreground">Real-time log monitoring</CardDescription>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={refreshLogs}
                   disabled={isRefreshing}
-                  className="border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                  className="border-border bg-background text-foreground hover:bg-accent/50"
                 >
                   <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
                   Refresh
@@ -375,22 +384,22 @@ export function SystemLogs() {
             <CardContent>
               <div className="mb-4 flex flex-col gap-4 sm:flex-row">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Search logs..."
-                    className="w-full bg-zinc-800 border-zinc-700 pl-9 text-zinc-200 placeholder:text-zinc-500"
+                    className="w-full bg-background border-border pl-9 text-foreground placeholder:text-muted-foreground"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
                 <div className="flex gap-2">
                   <Select value={levelFilter} onValueChange={setLevelFilter}>
-                    <SelectTrigger className="w-[130px] bg-zinc-800 border-zinc-700 text-zinc-200">
-                      <Filter className="mr-2 h-4 w-4 text-zinc-500" />
+                    <SelectTrigger className="w-[130px] bg-background border-border text-foreground">
+                      <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
                       <SelectValue placeholder="Level" />
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-800 border-zinc-700 text-zinc-200">
+                    <SelectContent className="bg-popover border-border text-popover-foreground">
                       <SelectItem value="all">All Levels</SelectItem>
                       <SelectItem value="ERROR">Error</SelectItem>
                       <SelectItem value="WARN">Warning</SelectItem>
@@ -400,11 +409,11 @@ export function SystemLogs() {
                   </Select>
 
                   <Select value={serviceFilter} onValueChange={setServiceFilter}>
-                    <SelectTrigger className="w-[130px] bg-zinc-800 border-zinc-700 text-zinc-200">
-                      <Layers className="mr-2 h-4 w-4 text-zinc-500" />
+                    <SelectTrigger className="w-[130px] bg-background border-border text-foreground">
+                      <Layers className="mr-2 h-4 w-4 text-muted-foreground" />
                       <SelectValue placeholder="Service" />
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-800 border-zinc-700 text-zinc-200">
+                    <SelectContent className="bg-popover border-border text-popover-foreground">
                       <SelectItem value="all">All Services</SelectItem>
                       <SelectItem value="database">Database</SelectItem>
                       <SelectItem value="auth">Auth</SelectItem>
@@ -419,45 +428,45 @@ export function SystemLogs() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-zinc-800 overflow-hidden">
+              <div className="rounded-lg border border-border overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="bg-zinc-800/50">
-                        <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      <tr className="bg-muted/50">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Timestamp
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Level
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Service
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Message
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Count
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-800 bg-zinc-900">
+                    <tbody className="divide-y divide-border bg-card">
                       {filteredLogs.length > 0 ? (
                         filteredLogs.map((log) => (
-                          <tr key={log.id} className="hover:bg-zinc-800/50 transition-colors">
-                            <td className="px-4 py-3 text-sm text-zinc-300 font-mono whitespace-nowrap">
+                          <tr key={log.id} className="hover:bg-accent/50 transition-colors">
+                            <td className="px-4 py-3 text-sm text-foreground font-mono whitespace-nowrap">
                               <div className="flex items-center">
-                                <Clock className="mr-2 h-3 w-3 text-zinc-500" />
+                                <Clock className="mr-2 h-3 w-3 text-muted-foreground" />
                                 {log.timestamp}
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-sm whitespace-nowrap">
+                            <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
                               <Badge className={`${getLevelColor(log.level)} text-white`}>
                                 {log.level === "ERROR" && <AlertCircle className="mr-1 h-3 w-3" />}
                                 {log.level}
                               </Badge>
                             </td>
-                            <td className="px-4 py-3 text-sm text-zinc-300 whitespace-nowrap">
+                            <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
                               {log.service === "database" && <Database className="mr-1 h-3 w-3 inline text-blue-400" />}
                               {log.service === "auth" && <Shield className="mr-1 h-3 w-3 inline text-purple-400" />}
                               {log.service === "api" && <Zap className="mr-1 h-3 w-3 inline text-yellow-400" />}
@@ -468,10 +477,10 @@ export function SystemLogs() {
                               {log.service === "system" && <Server className="mr-1 h-3 w-3 inline text-gray-400" />}
                               {log.service}
                             </td>
-                            <td className="px-4 py-3 text-sm text-zinc-300">{log.message}</td>
-                            <td className="px-4 py-3 text-sm text-zinc-300 whitespace-nowrap">
+                            <td className="px-4 py-3 text-sm text-foreground">{log.message}</td>
+                            <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
                               {log.count > 1 ? (
-                                <Badge variant="outline" className="border-zinc-700 text-zinc-300">
+                                <Badge variant="outline" className="border-border text-foreground">
                                   {log.count}×
                                 </Badge>
                               ) : (
@@ -482,7 +491,7 @@ export function SystemLogs() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-sm text-zinc-500">
+                          <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">
                             No logs matching your filters
                           </td>
                         </tr>

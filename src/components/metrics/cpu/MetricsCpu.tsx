@@ -170,7 +170,7 @@ export function CpuMetrics() {
 
   return (
     <div className="space-y-6">
-      <ResourceSection title="CPU 性能监控">
+      <ResourceSection title="CPU 性能监控" className="bg-card text-card-foreground">
         <ResourceMetrics>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <ResourceCard
@@ -178,36 +178,40 @@ export function CpuMetrics() {
               value={metrics.performanceCount}
               unit="%"
               showProgress={true}
-              icon={<Cpu className="h-6 w-6 text-blue-500" />}
+              icon={<Cpu className="h-6 w-6" />}
+              colorScheme="blue"
             />
             <ResourceCard
               title="处理器数量"
               value={metrics.processorCount}
               unit="核"
               showProgress={false}
-              icon={<Activity className="h-6 w-6 text-green-500" />}
+              icon={<Activity className="h-6 w-6" />}
+              colorScheme="blue"
             />
             <ResourceCard
               title="核心频率"
               value={metrics.coreFrequency}
               unit="MHz"
               showProgress={false}
-              icon={<Clock className="h-6 w-6 text-purple-500" />}
+              icon={<Clock className="h-6 w-6" />}
+              colorScheme="blue"
             />
             <ResourceCard
               title="CPU 状态"
               value={metrics.cpuState}
               unit=""
               showProgress={false}
-              icon={<Zap className="h-6 w-6 text-yellow-500" />}
+              icon={<Zap className="h-6 w-6" />}
+              colorScheme="blue"
             />
           </div>
         </ResourceMetrics>
 
         <ResourceCharts>
           <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-            <Card className="p-4 min-h-[400px] z-10">
-              <h3 className="text-lg font-semibold mb-2">CPU 使用率趋势</h3>
+            <Card className="p-4 min-h-[400px] z-10 bg-card text-card-foreground">
+              <h3 className="text-lg font-semibold mb-2 text-foreground">CPU 使用率趋势</h3>
               <LineCharts
                 data={metrics.performanceTrend}
                 yAxisUnit="%"
@@ -215,8 +219,8 @@ export function CpuMetrics() {
                 showLegend={false}
               />
             </Card>
-            <Card className="p-4 min-h-[400px] z-10">
-              <h3 className="text-lg font-semibold mb-2">中断和 DPC 趋势</h3>
+            <Card className="p-4 min-h-[400px] z-10 bg-card text-card-foreground">
+              <h3 className="text-lg font-semibold mb-2 text-foreground">中断和 DPC 趋势</h3>
               <LineCharts
                 data={[
                   { name: '时钟中断', data: metrics.clockInterruptsTrend },
