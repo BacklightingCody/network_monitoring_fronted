@@ -176,6 +176,7 @@ const AreaCharts: React.FC<AreaChartsProps> = ({
           tick={{ fill: isDark ? '#e5e7eb' : '#4b5563' }}
           axisLine={{ stroke: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' }}
           tickLine={{ stroke: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' }}
+          width={100}
         />
         
         <Tooltip

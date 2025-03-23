@@ -40,7 +40,7 @@ export function transformMetric(
 
   const result: MetricDataPoint = {
     time: formatTime ? new Date(timestamp * 1000).toLocaleTimeString() : timestamp,
-    value: isNaN(value) ? 0 : value
+    value: isNaN(Number(value)) ? 0 : value
   };
 
   // 保留指定的标签
