@@ -136,31 +136,24 @@ export default function LineCharts({
   return (
     <div className="w-full h-[250px]">
       <div className="flex justify-end mb-2 space-x-2">
-        <button
-          className={`px-2 py-1 rounded transition-colors ${
-            selectedRange === '1h'
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
-          }`}
-          onClick={() => setSelectedRange('1h')}
-        >
-          1小时
-        </button>
-        {["30m", "24h", "72h", "7d"].map((range) => (
+        {[ "30m","1h", "24h", "72h", "7d"].map((range) => (
           <button
             key={range}
-            className={`px-2 py-1 rounded ${
-              selectedRange === range ? "bg-green-500 text-white" : "bg-gray-200"
-            }`}
-            onClick={() => setSelectedRange(range as any)}
+            className={`px-2 py-1 rounded transition-colors ${selectedRange === range
+                ? "bg-green-500 text-foreground"
+                : "bg-blue-200 text-blue-900 hover:bg-muted/80"
+              }`}
+            onClick={() => setSelectedRange(range as "30m" | "1h" | "24h" | "72h" | "7d")}
           >
-            {range === "30m"
-              ? "30分钟"
-              : range === "24h"
-              ? "24小时"
-              : range === "72h"
-              ? "3天"
-              : "7天"}
+            {range === "1h"
+              ? "1小时"
+              : range === "30m"
+                ? "30分钟"
+                : range === "24h"
+                  ? "24小时"
+                  : range === "72h"
+                    ? "3天"
+                    : "7天"}
           </button>
         ))}
       </div>
@@ -217,7 +210,7 @@ export default function LineCharts({
             <Line
               type="monotone"
               dataKey="value"
-              stroke="green"
+              stroke="hsl(var(--primary))"
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 6 }}
