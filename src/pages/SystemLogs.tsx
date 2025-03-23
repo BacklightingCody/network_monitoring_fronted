@@ -169,15 +169,15 @@ export function SystemLogs() {
   const getLevelColor = (level) => {
     switch (level) {
       case "ERROR":
-        return "bg-red-500"
+        return "bg-red-500 text-foreground"
       case "WARN":
-        return "bg-amber-500"
+        return "bg-amber-500 text-foreground"
       case "INFO":
-        return "bg-blue-500"
+        return "bg-blue-500 text-foreground"
       case "DEBUG":
-        return "bg-gray-500"
+        return "bg-gray-500 text-foreground"
       default:
-        return "bg-gray-500"
+        return "bg-gray-500 text-foreground"
     }
   }
 
@@ -453,7 +453,8 @@ export function SystemLogs() {
                     <tbody className="divide-y divide-border bg-card">
                       {filteredLogs.length > 0 ? (
                         filteredLogs.map((log) => (
-                          <tr key={log.id} className="hover:bg-accent/50 transition-colors">
+                          <tr key={log.id} >
+                            {/* className="hover:bg-accent/50 transition-colors" */}
                             <td className="px-4 py-3 text-sm text-foreground font-mono whitespace-nowrap">
                               <div className="flex items-center">
                                 <Clock className="mr-2 h-3 w-3 text-muted-foreground" />
@@ -461,7 +462,7 @@ export function SystemLogs() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
-                              <Badge className={`${getLevelColor(log.level)} text-white`}>
+                              <Badge className={`${getLevelColor(log.level)} text-foreground`}>
                                 {log.level === "ERROR" && <AlertCircle className="mr-1 h-3 w-3" />}
                                 {log.level}
                               </Badge>

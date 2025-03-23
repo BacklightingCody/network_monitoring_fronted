@@ -1,115 +1,19 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import ResourceSection from '@/components/common/ResourceSection';
 import ResourceCard from '@/components/common/ResourceCards';
 import LineCharts from '@/components/common/LineCharts';
 import { Card } from '@/components/common/Card';
-import { getDiskAllMetrics } from '@/services/api/disk';
 import { ResourceMetrics, ResourceCharts } from '@/components/common/ResourceSection';
-import { HardDrive, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
-import { timeRangeMs } from '../constant';
-
-// 基础接口定义
-interface Metrics {
-  metric: MetricInfo;
-  value: [time: string | number, value: string | number];
-}
-
-interface MetricInfo {
-  __name__: string;
-  instance: string;
-  job: string;
-  volume?: string;
-  key?: string;
-}
-
-// 状态数据接口
-interface DiskSpace {
-  volume: string;
-  value: number;
-}
-
-interface DiskLatency {
-  volume: string;
-  value: number;
-}
-
-// 趋势图数据接口
-interface DiskTrendPoint {
-  time: string;
-  value: number;
-}
-
-interface DiskVolumeMetric {
-  volume: string;
-  time: string;
-  value: number;
-}
-
-interface DiskMetricsState {
-  // 状态数据
-  freeSpace: DiskSpace[];
-  totalFreeSpace: number;
-  readLatency: DiskLatency[];
-  writeLatency: DiskLatency[];
-  // 趋势数据
-  readWriteSpeedTrend: {
-    readSpeed: DiskTrendPoint[];
-    writeSpeed: DiskTrendPoint[];
-    volumeReadSpeeds: DiskVolumeMetric[];
-    volumeWriteSpeeds: DiskVolumeMetric[];
-  };
-  latencyTrend: {
-    readLatency: DiskTrendPoint[];
-    writeLatency: DiskTrendPoint[];
-  };
-  queueTrend: {
-    readQueue: DiskTrendPoint[];
-    writeQueue: DiskTrendPoint[];
-  };
-}
+import { HardDrive, ArrowDownToLine } from 'lucide-react';
+import { useDiskMetricsData, useDiskMetricsActions } from '@/stores';
 
 export function DiskMetrics() {
-  const [metrics, setMetrics] = useState<DiskMetricsState>({
-    freeSpace: [],
-    totalFreeSpace: 0,
-    readLatency: [],
-    writeLatency: [],
-    readWriteSpeedTrend: {
-      readSpeed: [],
-      writeSpeed: [],
-      volumeReadSpeeds: [],
-      volumeWriteSpeeds: []
-    },
-    latencyTrend: {
-      readLatency: [],
-      writeLatency: []
-    },
-    queueTrend: {
-      readQueue: [],
-      writeQueue: []
-    }
-  });
-
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const mounted = useRef(true);
-
-  // 使用 useRef 存储历史数据
-  const metricsHistory = useRef<{
-    readSpeed: DiskTrendPoint[];
-    writeSpeed: DiskTrendPoint[];
-    readLatency: DiskTrendPoint[];
-    writeLatency: DiskTrendPoint[];
-    readQueue: DiskTrendPoint[];
-    writeQueue: DiskTrendPoint[];
-  }>({
-    readSpeed: [],
-    writeSpeed: [],
-    readLatency: [],
-    writeLatency: [],
-    readQueue: [],
-    writeQueue: []
-  });
+  // 分别获取数据和操作，避免不必要的重渲染
+  const metrics = useDiskMetricsData();
+  const actions = useDiskMetricsActions();
+  
+  // 使用 ref 追踪组件是否已挂载，避免多次设置轮询
+  const isMounted = useRef(false);
 
   // 转换字节为可读格式
   const formatBytes = (bytes: number): string => {
@@ -120,194 +24,35 @@ export function DiskMetrics() {
     return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
   };
 
-  // 处理状态指标数据
-  const processStateMetrics = (metrics: any[]): DiskSpace[] => {
-    if (!Array.isArray(metrics)) {
-      // console.warn('Invalid metric data:', metrics);
-      return [];
-    }
-    return metrics.map(item => ({
-      volume: item.metric.volume || '',
-      value: parseFloat(item.value[1] as string) || 0
-    }));
-  };
-
-  // 处理趋势指标数据
-  const processTrendMetrics = (metrics: any[]): DiskVolumeMetric[] => {
-    if (!Array.isArray(metrics)) {
-      // console.warn('Invalid metric data:', metrics);
-      return [];
-    }
-
-    return metrics.map(item => ({
-      volume: item.metric.volume || '',
-      time: new Date((item.value[0] as number) * 1000).toLocaleTimeString(),
-      value: parseFloat(item.value[1] as string) || 0
-    }));
-  };
-
-  // 计算总和
-  const calculateTotal = (metrics: DiskSpace[]): number => {
-    return metrics.reduce((sum, m) => sum + m.value, 0);
-  };
-
-  // 计算读写速度
-  const calculateSpeed = (bytes: DiskVolumeMetric[], seconds: DiskVolumeMetric[]): DiskVolumeMetric[] => {
-    return bytes.map(byte => {
-      const second = seconds.find(s => s.volume === byte.volume && s.time === byte.time);
-      return {
-        volume: byte.volume,
-        time: byte.time,
-        value: second ? byte.value / second.value : 0
-      };
-    });
-  };
-
   // 获取特定卷的指标值
-  const getVolumeMetric = (metrics: DiskSpace[], volume: string): number => {
+  const getVolumeMetric = (metrics: { volume: string; value: number }[], volume: string): number => {
     return metrics.find(m => m.volume === volume)?.value || 0;
   };
 
-  const fetchData = useCallback(async () => {
-    if (!mounted.current || isLoading) return;
-
-    try {
-      // console.log('开始获取磁盘指标数据...');
-      setIsLoading(true);
-      setError(null);
-
-      const allMetrics = await getDiskAllMetrics();
-
-      if (!mounted.current) return;
-
-      const {
-        freeBytes,
-        readLatencySeconds,
-        writeLatencySeconds,
-        idleSeconds,
-        readBytesTotal,
-        writeBytesTotal,
-        readSeconds,
-        writeSeconds,
-        avgReadRequestsQueued: readQueue,
-        avgWriteRequestsQueued: writeQueue
-      } = allMetrics;
-
-      // 处理状态数据
-      const freeBytesMetrics = processStateMetrics(freeBytes);
-      const totalFreeSpace = calculateTotal(freeBytesMetrics);
-      const readLatencyMetrics = processStateMetrics(readLatencySeconds);
-      const writeLatencyMetrics = processStateMetrics(writeLatencySeconds);
-
-      // 处理趋势数据
-      const readBytesMetrics = processTrendMetrics(readBytesTotal);
-      const writeBytesMetrics = processTrendMetrics(writeBytesTotal);
-      const readTimeMetrics = processTrendMetrics(readSeconds);
-      const writeTimeMetrics = processTrendMetrics(writeSeconds);
-
-      // 计算读写速度
-      const readSpeedMetrics = calculateSpeed(readBytesMetrics, readTimeMetrics);
-      const writeSpeedMetrics = calculateSpeed(writeBytesMetrics, writeTimeMetrics);
-
-      // 计算当前时间点的指标
-      const currentTime = new Date().toLocaleTimeString();
-      const currentMetrics = {
-        readSpeed: {
-          time: currentTime,
-          value: readSpeedMetrics.reduce((sum, m) => sum + m.value, 0)
-        },
-        writeSpeed: {
-          time: currentTime,
-          value: writeSpeedMetrics.reduce((sum, m) => sum + m.value, 0)
-        },
-        readLatency: {
-          time: currentTime,
-          value: readLatencyMetrics.reduce((sum, m) => sum + m.value, 0) / readLatencyMetrics.length || 0
-        },
-        writeLatency: {
-          time: currentTime,
-          value: writeLatencyMetrics.reduce((sum, m) => sum + m.value, 0) / writeLatencyMetrics.length || 0
-        },
-        readQueue: {
-          time: currentTime,
-          value: processStateMetrics(readQueue)[0]?.value || 0
-        },
-        writeQueue: {
-          time: currentTime,
-          value: processStateMetrics(writeQueue)[0]?.value || 0
-        }
-      };
-
-      // 更新历史数据
-      metricsHistory.current = {
-        readSpeed: [...metricsHistory.current.readSpeed, currentMetrics.readSpeed].slice(-timeRangeMs['7d']),
-        writeSpeed: [...metricsHistory.current.writeSpeed, currentMetrics.writeSpeed].slice(-timeRangeMs['7d']),
-        readLatency: [...metricsHistory.current.readLatency, currentMetrics.readLatency].slice(-timeRangeMs['7d']),
-        writeLatency: [...metricsHistory.current.writeLatency, currentMetrics.writeLatency].slice(-timeRangeMs['7d']),
-        readQueue: [...metricsHistory.current.readQueue, currentMetrics.readQueue].slice(-timeRangeMs['7d']),
-        writeQueue: [...metricsHistory.current.writeQueue, currentMetrics.writeQueue].slice(-timeRangeMs['7d'])
-      };
-      // console.log(metricsHistory.current)
-      // 更新状态
-      setMetrics((prev) => ({
-        ...prev,
-        freeSpace: freeBytesMetrics,
-        totalFreeSpace,
-        readLatency: readLatencyMetrics,
-        writeLatency: writeLatencyMetrics,
-        readWriteSpeedTrend: {
-          readSpeed: metricsHistory.current.readSpeed,
-          writeSpeed: metricsHistory.current.writeSpeed,
-          volumeReadSpeeds: readSpeedMetrics,
-          volumeWriteSpeeds: writeSpeedMetrics
-        },
-        latencyTrend: {
-          readLatency: metricsHistory.current.readLatency,
-          writeLatency: metricsHistory.current.writeLatency
-        },
-        queueTrend: {
-          readQueue: metricsHistory.current.readQueue,
-          writeQueue: metricsHistory.current.writeQueue
-        }
-      }));
-
-    } catch (error) {
-      console.error('获取磁盘指标失败:', error);
-      if (mounted.current) {
-        setError('获取数据失败，请稍后重试');
-      }
-    } finally {
-      if (mounted.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [isLoading]);
-
   useEffect(() => {
-    mounted.current = true;
-    // console.log('磁盘指标组件已挂载');
-
-    // 立即获取一次数据
-    fetchData();
-
-    // 设置定时器
-    const intervalId = window.setInterval(() => {
-      // console.log('定时获取磁盘指标...');
-      fetchData();
+    // 只在首次渲染时设置轮询
+    if (!isMounted.current) {
+      isMounted.current = true;
+      console.log('磁盘组件挂载，开始轮询');
+      actions.startPolling();
+    }
+    const intervalId = setInterval(() => {
+      actions.startPolling();
     }, 5000);
-
-    // 清理函数
+    
+    // 组件卸载时清理
     return () => {
-      mounted.current = false;
-      if (intervalId) {
-        clearInterval(intervalId);
-        // console.log('磁盘指标定时器已清除');
+      clearInterval(intervalId);
+      if (isMounted.current) {
+        console.log('磁盘组件卸载，停止轮询');
+        actions.stopPolling();
+        isMounted.current = false;
       }
     };
-  }, []);
+  }, []); // 空依赖数组，只在组件挂载和卸载时执行
 
-  if (error) {
-    return <div className="text-red-500 text-center p-4">{error}</div>;
+  if (metrics.error) {
+    return <div className="text-red-500 text-center p-4">{metrics.error}</div>;
   }
 
   return (
@@ -320,7 +65,7 @@ export function DiskMetrics() {
               value={formatBytes(metrics.totalFreeSpace)}
               unit=""
               showProgress={false}
-              icon={<HardDrive className="h-6 w-6 text-blue-500" />}
+              icon={<HardDrive className="h-6 w-6" />}
               colorScheme='emerald'
             />
             <ResourceCard
@@ -328,7 +73,7 @@ export function DiskMetrics() {
               value={formatBytes(getVolumeMetric(metrics.freeSpace, 'C:'))}
               unit=""
               showProgress={false}
-              icon={<HardDrive className="h-6 w-6 text-blue-500" />}
+              icon={<HardDrive className="h-6 w-6" />}
               colorScheme='emerald'
             />
             <ResourceCard
@@ -336,7 +81,7 @@ export function DiskMetrics() {
               value={formatBytes(getVolumeMetric(metrics.freeSpace, 'D:'))}
               unit=""
               showProgress={false}
-              icon={<HardDrive className="h-6 w-6 text-blue-500" />}
+              icon={<HardDrive className="h-6 w-6" />}
               colorScheme='emerald'
             />
             <ResourceCard
@@ -344,7 +89,7 @@ export function DiskMetrics() {
               value={formatBytes(metrics.readWriteSpeedTrend.readSpeed[metrics.readWriteSpeedTrend.readSpeed.length - 1]?.value || 0)}
               unit="/s"
               showProgress={false}
-              icon={<ArrowDownToLine className="h-6 w-6 text-green-500" />}
+              icon={<ArrowDownToLine className="h-6 w-6" />}
               colorScheme='emerald'
             />
           </div>

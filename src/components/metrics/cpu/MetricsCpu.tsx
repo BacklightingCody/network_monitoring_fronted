@@ -1,171 +1,44 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import ResourceSection from '@/components/common/ResourceSection';
 import ResourceCard from '@/components/common/ResourceCards';
 import LineCharts from '@/components/common/LineCharts';
 import { Card } from '@/components/common/Card';
-import { transformMetricsData, transformMetricsSeries, calculateAverageCpuUsage, aggregateMetricsData, processCpuCStateData, getCurrentCpuState } from '../utils/transformMetricsData';
-import { getCpuAllMetrics } from '@/services/api/cpu';
 import { ResourceMetrics, ResourceCharts } from '@/components/common/ResourceSection';
 import { Cpu, Activity, Clock, Zap } from 'lucide-react';
-import { timeRangeMs } from '../constant';
-
-interface MetricData {
-  time: string;
-  value: number;
-}
-
-interface MetricDataPoint {
-  time: string;
-  value: number;
-  [key: string]: any;
-}
+import { useCpuMetricsData, useCpuMetricsActions } from '@/stores';
 
 export function CpuMetrics() {
-  const [metrics, setMetrics] = useState<{
-    processorCount: number;
-    performanceCount: number;
-    coreFrequency: number;
-    cpuState: string;
-    performanceTrend: MetricDataPoint[];
-    clockInterruptsTrend: MetricDataPoint[];
-    dpcsTrend: MetricDataPoint[];
-    interruptsTrend: MetricDataPoint[];
-  }>({
-    processorCount: 0,
-    performanceCount: 0,
-    coreFrequency: 0,
-    cpuState: '',
-    performanceTrend: [],
-    clockInterruptsTrend: [],
-    dpcsTrend: [],
-    interruptsTrend: []
-  });
-
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const mounted = useRef(true);
-
-  // 使用 useRef 存储历史数据
-  const metricsHistory = useRef<{
-    performance: MetricDataPoint[];
-    clockInterrupts: MetricDataPoint[];
-    dpcs: MetricDataPoint[];
-    interrupts: MetricDataPoint[];
-  }>({
-    performance: [],
-    clockInterrupts: [],
-    dpcs: [],
-    interrupts: []
-  });
-
-  const fetchData = useCallback(async () => {
-    if (!mounted.current || isLoading) return;
-
-    try {
-      // console.log('开始获取CPU指标数据...');
-      setIsLoading(true);
-      setError(null);
-
-      const allMetrics = await getCpuAllMetrics();
-      
-      if (!mounted.current) return;
-
-      const {
-        clockInterrupts,
-        coreFrequency,
-        cpuCState,
-        dpcs,
-        interrupts,
-        logicalProcessor,
-        processorPerformance,
-        processorUtility,
-        cpuTime
-      } = allMetrics;
-
-      // 处理 CPU 使用率数据
-      const currentPerformance = calculateAverageCpuUsage(transformMetricsData(processorPerformance));
-      const newPerformancePoint = {
-        time: new Date().toLocaleTimeString(),
-        value: currentPerformance
-      };
-
-      // 处理中断相关数据
-      const currentTime = new Date().toLocaleTimeString();
-      const cStateData = processCpuCStateData(cpuCState);
-      const cpuState = getCurrentCpuState(cStateData);
-      const newMetricsPoints = {
-        clockInterrupts: {
-          time: currentTime,
-          value: transformMetricsData(clockInterrupts, { latestOnly: true }) as number
-        },
-        dpcs: {
-          time: currentTime,
-          value: transformMetricsData(dpcs, { latestOnly: true }) as number
-        },
-        interrupts: {
-          time: currentTime,
-          value: transformMetricsData(interrupts, { latestOnly: true }) as number
-        }
-      };
-
-      // 更新历史数据
-      metricsHistory.current = {
-        performance: [...metricsHistory.current.performance, newPerformancePoint].slice(-timeRangeMs['7d']),
-        clockInterrupts: [...metricsHistory.current.clockInterrupts, newMetricsPoints.clockInterrupts].slice(-timeRangeMs['7d']),
-        dpcs: [...metricsHistory.current.dpcs, newMetricsPoints.dpcs].slice(-timeRangeMs['7d']),
-        interrupts: [...metricsHistory.current.interrupts, newMetricsPoints.interrupts].slice(-timeRangeMs['7d'])
-      };
-
-      // 更新状态
-      setMetrics(prev => ({
-        ...prev,
-        processorCount: transformMetricsData(logicalProcessor, { latestOnly: true }) as number,
-        performanceCount: currentPerformance,
-        performanceTrend: metricsHistory.current.performance,
-        coreFrequency: transformMetricsData(coreFrequency, { latestOnly: true }) as number,
-        cpuState: cpuState,
-        clockInterruptsTrend: metricsHistory.current.clockInterrupts,
-        dpcsTrend: metricsHistory.current.dpcs,
-        interruptsTrend: metricsHistory.current.interrupts
-      }));
-
-    } catch (error) {
-      console.error('获取CPU指标失败:', error);
-      if (mounted.current) {
-        setError('获取数据失败，请稍后重试');
-      }
-    } finally {
-      if (mounted.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [isLoading]);
+  // 分别获取数据和操作，避免不必要的重渲染
+  const metrics = useCpuMetricsData();
+  const actions = useCpuMetricsActions();
+  
+  // 使用 ref 追踪组件是否已挂载，避免多次设置轮询
+  const isMounted = useRef(false);
 
   useEffect(() => {
-    mounted.current = true;
-    // console.log('CPU指标组件已挂载');
-
-    // 立即获取一次数据
-    fetchData();
-    // 设置定时器
-    const intervalId = window.setInterval(() => {
-      // console.log('定时获取CPU指标...');
-      // console.log(metrics.clockInterruptsTrend,'中断')
-      fetchData();
+    // 只在首次渲染时设置轮询
+    if (!isMounted.current) {
+      isMounted.current = true;
+      console.log('CPU组件挂载，开始轮询');
+      actions.startPolling(); // 启动轮询
+    }
+    const intervalId = setInterval(() => {
+      actions.startPolling();
     }, 5000);
 
-    // 清理函数
+    // 组件卸载时清理
     return () => {
-      mounted.current = false;
-      if (intervalId) {
-        clearInterval(intervalId);
-        // console.log('CPU指标定时器已清除');
+      clearInterval(intervalId); // 清除轮询间隔
+      if (isMounted.current) {
+        console.log('CPU组件卸载，停止轮询');
+        actions.stopPolling(); // 停止轮询
+        isMounted.current = false;
       }
     };
-  }, []);
+  }, []); // 依赖 actions，确保在 actions 变化时重新执行
 
-  if (error) {
-    return <div className="text-red-500 text-center p-4">{error}</div>;
+  if (metrics.error) {
+    return <div className="text-red-500 text-center p-4">{metrics.error}</div>;
   }
 
   return (

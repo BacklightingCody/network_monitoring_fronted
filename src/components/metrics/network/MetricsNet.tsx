@@ -1,155 +1,44 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import ResourceSection from '@/components/common/ResourceSection';
 import ResourceCard from '@/components/common/ResourceCards';
 import LineCharts from '@/components/common/LineCharts';
 import { Card } from '@/components/common/Card';
-import { getNetworkAllMetrics } from '@/services/network';
 import { ResourceMetrics, ResourceCharts } from '@/components/common/ResourceSection';
 import { Network, ArrowDown, ArrowUp, Wifi, AlertTriangle, Server } from 'lucide-react';
-import { timeRangeMs } from '../constant';
-import { extractMetrics } from '../utils/transformMetricsData'
-// 基础接口定义
-interface Metrics {
-  metric: MetricInfo;
-  value: [time: string | number, value: string | number];
-}
-
-interface MetricInfo {
-  __name__: string;
-  instance: string;
-  job: string;
-  interface?: string;
-}
-
-interface NicInfo {
-  nic: string;
-  family: string;
-  friendly_name: string;
-  address: string;
-}
-
-interface NetworkNicInfo {
-  metric: {
-    nic?: string;
-    family?: string;
-    friendly_name?: string;
-    address?: string;
-    [key: string]: string | undefined;
-  };
-  time: string | number;
-  value: string | number;
-}
-
-// 状态数据接口
-interface NetworkState {
-  interface: string;
-  value: number;
-}
-
-interface NetworkTrendPoint {
-  time: string;
-  value: number;
-}
-
-interface NetworkMetricsState {
-  // 状态数据
-  bytesReceived: NetworkState[];
-  bytesSent: NetworkState[];
-  bytesTotal: number;
-  currentBandwidth: number;
-  outputQueueLength: number;
-  packetsReceived: NetworkState[];
-  packetsSent: NetworkState[];
-  packetsTotal: number;
-  errors: {
-    outbound: number;
-    received: number;
-    discardedOutbound: number;
-    discardedReceived: number;
-    unknown: number;
-  };
-  nicInfo: NetworkNicInfo[];
-
-  // 趋势数据
-  trafficTrend: {
-    bytesReceived: NetworkTrendPoint[];
-    bytesSent: NetworkTrendPoint[];
-    bandwidth: NetworkTrendPoint[];
-  };
-  packetsTrend: {
-    received: NetworkTrendPoint[];
-    sent: NetworkTrendPoint[];
-    total: NetworkTrendPoint[];
-  };
-  errorsTrend: {
-    outbound: NetworkTrendPoint[];
-    received: NetworkTrendPoint[];
-    discarded: NetworkTrendPoint[];
-  };
-}
+import { useNetworkMetrics } from '@/stores';
 
 export function NetworkMetrics() {
-  const [metrics, setMetrics] = useState<NetworkMetricsState>({
-    bytesReceived: [],
-    bytesSent: [],
-    bytesTotal: 0,
-    currentBandwidth: 0,
-    outputQueueLength: 0,
-    packetsReceived: [],
-    packetsSent: [],
-    packetsTotal: 0,
-    errors: {
-      outbound: 0,
-      received: 0,
-      discardedOutbound: 0,
-      discardedReceived: 0,
-      unknown: 0
-    },
-    nicInfo: [],
-    trafficTrend: {
-      bytesReceived: [],
-      bytesSent: [],
-      bandwidth: []
-    },
-    packetsTrend: {
-      received: [],
-      sent: [],
-      total: []
-    },
-    errorsTrend: {
-      outbound: [],
-      received: [],
-      discarded: []
-    }
-  });
-
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const mounted = useRef(true);
+  const metrics = useNetworkMetrics();
+  const actions = useNetworkMetrics();
 
-  // 使用 useRef 存储历史数据
-  const metricsHistory = useRef<{
-    bytesReceived: NetworkTrendPoint[];
-    bytesSent: NetworkTrendPoint[];
-    bandwidth: NetworkTrendPoint[];
-    packetsReceived: NetworkTrendPoint[];
-    packetsSent: NetworkTrendPoint[];
-    errorsOutbound: NetworkTrendPoint[];
-    errorsReceived: NetworkTrendPoint[];
-    errorsDiscarded: NetworkTrendPoint[];
-  }>({
-    bytesReceived: [],
-    bytesSent: [],
-    bandwidth: [],
-    packetsReceived: [],
-    packetsSent: [],
-    errorsOutbound: [],
-    errorsReceived: [],
-    errorsDiscarded: []
-  });
+  const fetchData = useCallback(() => {
+    if (mounted.current) {
+      metrics.fetchNetworkMetrics();
+    }
+  }, [metrics]);
 
-  // 格式化字节数
-  const formatBytes = (bytes: number, decimals = 2): string => {
+  useEffect(() => {
+    mounted.current = true;
+    fetchData(); // 立即获取一次数据
+
+     const intervalId = setInterval(() => {
+      actions.startPolling();
+    }, 5000);
+
+    return () => {
+      clearInterval(intervalId);
+      mounted.current = false;
+      clearInterval(intervalId); // 清理定时器
+    };
+  }, []);
+
+  if (metrics.error) {
+    return <div className="text-red-500 text-center p-4">{metrics.error}</div>;
+  }
+
+   // 格式化字节数
+   const formatBytes = (bytes: number, decimals = 2): string => {
     if (bytes === 0) return '0 B';
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
@@ -166,192 +55,18 @@ export function NetworkMetrics() {
     return `${(bps / 1000000000).toFixed(2)} Gbps`;
   };
 
-  // 处理状态指标数据
-  const processStateMetrics = (metrics: any[]): NetworkState[] => {
-    if (!Array.isArray(metrics)) {
-      // console.warn('Invalid metric data:', metrics);
-      return [];
-    }
-    return metrics.map(item => ({
-      interface: item.metric.interface || '',
-      value: parseFloat(item.value[1] as string) || 0
-    }));
-  };
-
-
-
-  const fetchData = useCallback(async () => {
-    if (!mounted.current || isLoading) return;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const allMetrics = await getNetworkAllMetrics();
-      console.log(allMetrics)
-      if (!mounted.current) return;
-
-      const {
-        bytesReceived,
-        bytesSent,
-        bytesTotal,
-        currentBandwidth,
-        outputQueueLength,
-        packetsReceived,
-        packetsSent,
-        packetsTotal,
-        packetsOutboundErrors,
-        packetsReceivedErrors,
-        packetsOutboundDiscarded,
-        packetsReceivedDiscarded,
-        packetsReceivedUnknown,
-        nicAddressInfo
-      } = allMetrics;
-      console.log(allMetrics, 'kxc')
-      // 处理当前时间点的指标
-      const currentTime = new Date().toLocaleTimeString();
-      const currentMetrics = {
-        bytesReceived: {
-          time: currentTime,
-          value: processStateMetrics(bytesReceived).reduce((sum, m) => sum + m.value, 0)
-        },
-        bytesSent: {
-          time: currentTime,
-          value: processStateMetrics(bytesSent).reduce((sum, m) => sum + m.value, 0)
-        },
-        bandwidth: {
-          time: currentTime,
-          value: processStateMetrics(currentBandwidth).reduce((sum, m) => sum + m.value, 0)
-        },
-        packetsReceived: {
-          time: currentTime,
-          value: processStateMetrics(packetsReceived).reduce((sum, m) => sum + m.value, 0)
-        },
-        packetsSent: {
-          time: currentTime,
-          value: processStateMetrics(packetsSent).reduce((sum, m) => sum + m.value, 0)
-        },
-        errorsOutbound: {
-          time: currentTime,
-          value: processStateMetrics(packetsOutboundErrors).reduce((sum, m) => sum + m.value, 0)
-        },
-        errorsReceived: {
-          time: currentTime,
-          value: processStateMetrics(packetsReceivedErrors).reduce((sum, m) => sum + m.value, 0)
-        },
-        errorsDiscarded: {
-          time: currentTime,
-          value: processStateMetrics(packetsOutboundDiscarded).reduce((sum, m) => sum + m.value, 0) +
-            processStateMetrics(packetsReceivedDiscarded).reduce((sum, m) => sum + m.value, 0)
-        }
-      };
-
-      // 更新历史数据
-      metricsHistory.current = {
-        bytesReceived: [...metricsHistory.current.bytesReceived, currentMetrics.bytesReceived].slice(-timeRangeMs['7d']),
-        bytesSent: [...metricsHistory.current.bytesSent, currentMetrics.bytesSent].slice(-timeRangeMs['7d']),
-        bandwidth: [...metricsHistory.current.bandwidth, currentMetrics.bandwidth].slice(-timeRangeMs['7d']),
-        packetsReceived: [...metricsHistory.current.packetsReceived, currentMetrics.packetsReceived].slice(-timeRangeMs['7d']),
-        packetsSent: [...metricsHistory.current.packetsSent, currentMetrics.packetsSent].slice(-timeRangeMs['7d']),
-        errorsOutbound: [...metricsHistory.current.errorsOutbound, currentMetrics.errorsOutbound].slice(-timeRangeMs['7d']),
-        errorsReceived: [...metricsHistory.current.errorsReceived, currentMetrics.errorsReceived].slice(-timeRangeMs['7d']),
-        errorsDiscarded: [...metricsHistory.current.errorsDiscarded, currentMetrics.errorsDiscarded].slice(-timeRangeMs['7d'])
-      };
-      console.log(nicAddressInfo, 'sss')
-      // 更新状态
-      setMetrics(prev => ({
-        ...prev,
-        bytesReceived: processStateMetrics(bytesReceived),
-        bytesSent: processStateMetrics(bytesSent),
-        bytesTotal: processStateMetrics(bytesTotal).reduce((sum, m) => sum + m.value, 0),
-        currentBandwidth: processStateMetrics(currentBandwidth).reduce((sum, m) => sum + m.value, 0),
-        outputQueueLength: processStateMetrics(outputQueueLength).reduce((sum, m) => sum + m.value, 0),
-        packetsReceived: processStateMetrics(packetsReceived),
-        packetsSent: processStateMetrics(packetsSent),
-        packetsTotal: processStateMetrics(packetsTotal).reduce((sum, m) => sum + m.value, 0),
-        errors: {
-          outbound: processStateMetrics(packetsOutboundErrors).reduce((sum, m) => sum + m.value, 0),
-          received: processStateMetrics(packetsReceivedErrors).reduce((sum, m) => sum + m.value, 0),
-          discardedOutbound: processStateMetrics(packetsOutboundDiscarded).reduce((sum, m) => sum + m.value, 0),
-          discardedReceived: processStateMetrics(packetsReceivedDiscarded).reduce((sum, m) => sum + m.value, 0),
-          unknown: processStateMetrics(packetsReceivedUnknown).reduce((sum, m) => sum + m.value, 0)
-        },
-        nicInfo: extractMetrics(nicAddressInfo, ['nic', 'friendly_name', 'family', 'address']).map(item => ({
-          metric: item.metric,
-          time: item.time,
-          value: item.value
-        })),
-        trafficTrend: {
-          bytesReceived: metricsHistory.current.bytesReceived,
-          bytesSent: metricsHistory.current.bytesSent,
-          bandwidth: metricsHistory.current.bandwidth
-        },
-        packetsTrend: {
-          received: metricsHistory.current.packetsReceived,
-          sent: metricsHistory.current.packetsSent,
-          total: metricsHistory.current.packetsReceived.map((point, index) => ({
-            time: point.time,
-            value: point.value + (metricsHistory.current.packetsSent[index]?.value || 0)
-          }))
-        },
-        errorsTrend: {
-          outbound: metricsHistory.current.errorsOutbound,
-          received: metricsHistory.current.errorsReceived,
-          discarded: metricsHistory.current.errorsDiscarded
-        }
-      }));
-
-    } catch (error) {
-      // console.error('获取网络指标失败:', error);
-      if (mounted.current) {
-        setError('获取数据失败，请稍后重试');
-      }
-    } finally {
-      if (mounted.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [isLoading]);
-
-  useEffect(() => {
-    mounted.current = true;
-    // console.log('网络指标组件已挂载');
-
-    // 立即获取一次数据
-    fetchData();
-
-    // 设置定时器
-    const intervalId = window.setInterval(() => {
-      // console.log('定时获取网络指标...');
-      fetchData();
-    }, 5000);
-
-    // 清理函数
-    return () => {
-      mounted.current = false;
-      if (intervalId) {
-        clearInterval(intervalId);
-        // console.log('网络指标定时器已清除');
-      }
-    };
-  }, []);
-
-  if (error) {
-    return <div className="text-red-500 text-center p-4">{error}</div>;
-  }
 
   return (
     <div className="space-y-6">
       <ResourceSection title="网络性能监控">
         <ResourceMetrics>
-          {/* 基础网络状态 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <ResourceCard
               title="当前带宽"
               value={formatBandwidth(metrics.currentBandwidth)}
               unit=""
               showProgress={true}
-              icon={<Network className="h-6 w-6 text-blue-500" />}
+              icon={<Network className="h-6 w-6" />}
               colorScheme='cyan'
             />
             <ResourceCard
@@ -359,7 +74,7 @@ export function NetworkMetrics() {
               value={formatBytes(metrics.bytesTotal)}
               unit=""
               showProgress={false}
-              icon={<Wifi className="h-6 w-6 text-green-500" />}
+              icon={<Wifi className="h-6 w-6" />}
               colorScheme='cyan'
             />
             <ResourceCard
@@ -367,7 +82,7 @@ export function NetworkMetrics() {
               value={formatBytes(metrics.bytesReceived.reduce((sum, m) => sum + m.value, 0))}
               unit=""
               showProgress={false}
-              icon={<ArrowDown className="h-6 w-6 text-cyan-500" />}
+              icon={<ArrowDown className="h-6 w-6" />}
               colorScheme='cyan'
             />
             <ResourceCard
@@ -375,7 +90,7 @@ export function NetworkMetrics() {
               value={formatBytes(metrics.bytesSent.reduce((sum, m) => sum + m.value, 0))}
               unit=""
               showProgress={false}
-              icon={<ArrowUp className="h-6 w-6 text-purple-500" />}
+              icon={<ArrowUp className="h-6 w-6" />}
               colorScheme='cyan'
             />
           </div>
@@ -387,7 +102,7 @@ export function NetworkMetrics() {
               value={metrics.packetsTotal.toLocaleString()}
               unit="个"
               showProgress={false}
-              icon={<Server className="h-6 w-6 text-indigo-500" />}
+              icon={<Server className="h-6 w-6" />}
               colorScheme='cyan'
             />
             <ResourceCard
@@ -395,7 +110,7 @@ export function NetworkMetrics() {
               value={metrics.packetsReceived.reduce((sum, m) => sum + m.value, 0).toLocaleString()}
               unit="个"
               showProgress={false}
-              icon={<ArrowDown className="h-6 w-6 text-green-500" />}
+              icon={<ArrowDown className="h-6 w-6" />}
               colorScheme='cyan'
             />
             <ResourceCard
@@ -403,7 +118,7 @@ export function NetworkMetrics() {
               value={metrics.packetsSent.reduce((sum, m) => sum + m.value, 0).toLocaleString()}
               unit="个"
               showProgress={false}
-              icon={<ArrowUp className="h-6 w-6 text-blue-500" />}
+              icon={<ArrowUp className="h-6 w-6" />}
               colorScheme='cyan'
             />
             <ResourceCard
@@ -411,7 +126,7 @@ export function NetworkMetrics() {
               value={metrics.outputQueueLength.toLocaleString()}
               unit=""
               showProgress={true}
-              icon={<Server className="h-6 w-6 text-yellow-500" />}
+              icon={<Server className="h-6 w-6" />}
               colorScheme='cyan'
             />
           </div>
@@ -423,7 +138,7 @@ export function NetworkMetrics() {
               value={metrics.errors.outbound.toLocaleString()}
               unit="个"
               showProgress={false}
-              icon={<AlertTriangle className="h-6 w-6 text-red-500" />}
+              icon={<AlertTriangle className="h-6 w-6" />}
               colorScheme='cyan'
             />
             <ResourceCard
@@ -431,7 +146,7 @@ export function NetworkMetrics() {
               value={metrics.errors.received.toLocaleString()}
               unit="个"
               showProgress={false}
-              icon={<AlertTriangle className="h-6 w-6 text-orange-500" />}
+              icon={<AlertTriangle className="h-6 w-6" />}
               colorScheme='cyan'
             />
             <ResourceCard
@@ -439,37 +154,7 @@ export function NetworkMetrics() {
               value={metrics.errors.unknown.toLocaleString()}
               unit="个"
               showProgress={false}
-              icon={<AlertTriangle className="h-6 w-6 text-yellow-500" />}
-              colorScheme='cyan'
-            />
-            <ResourceCard
-              title="发送丢包"
-              value={metrics.errors.discardedOutbound.toLocaleString()}
-              unit="个"
-              showProgress={false}
-              icon={<AlertTriangle className="h-6 w-6 text-pink-500" />}
-              colorScheme='cyan'
-            />
-            <ResourceCard
-              title="接收丢包"
-              value={metrics.errors.discardedReceived.toLocaleString()}
-              unit="个"
-              showProgress={false}
-              icon={<AlertTriangle className="h-6 w-6 text-purple-500" />}
-              colorScheme='cyan'
-            />
-            <ResourceCard
-              title="总错误数"
-              value={(
-                metrics.errors.outbound +
-                metrics.errors.received +
-                metrics.errors.discardedOutbound +
-                metrics.errors.discardedReceived +
-                metrics.errors.unknown
-              ).toLocaleString()}
-              unit="个"
-              showProgress={false}
-              icon={<AlertTriangle className="h-6 w-6 text-red-600" />}
+              icon={<AlertTriangle className="h-6 w-6" />}
               colorScheme='cyan'
             />
           </div>
@@ -482,21 +167,18 @@ export function NetworkMetrics() {
                 {metrics.nicInfo.map((nic, index) => (
                   <Card key={index} className="p-4">
                     <div className="flex items-center space-x-2 mb-2">
-                      <Network className="h-5 w-5 text-blue-500" />
+                      <Network className="h-5 w-5" />
                       <h4 className="font-medium">{nic.metric.nic || '未知接口'}</h4>
                     </div>
                     <div className="space-y-1">
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm">
                         名称: {nic.metric.friendly_name || '-'}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm">
                         地址: {nic.metric.address || '-'}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm">
                         类型: {nic.metric.family || '-'}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        类型: {nic.value || '-'}
                       </div>
                     </div>
                   </Card>
