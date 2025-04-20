@@ -4,6 +4,7 @@ import { createDiskMetricsSlice, DiskMetricsSlice } from './slices/diskMetricsSl
 import { createNetworkMetricsSlice, NetworkMetricsSlice } from './slices/networkMetricsSlice';
 import { createMemoryMetricsSlice, MemoryMetricsSlice } from './slices/memoryMetricsSlice';
 import { createSystemMetricsSlice, SystemMetricsSlice } from './slices/systemMetricsSlice';
+import { createTrafficMetricsSlice, TrafficMetricsSlice } from './slices/trafficMetricsSlice';
 import { useCallback } from 'react';
 
 // 定义完整的 Store 状态类型
@@ -13,6 +14,7 @@ export interface StoreState {
   network: NetworkMetricsSlice;
   memory: MemoryMetricsSlice;
   system: SystemMetricsSlice;
+  traffic: TrafficMetricsSlice;
 }
 
 // 创建 store
@@ -22,6 +24,7 @@ export const useStore = create<StoreState>()((set, get) => ({
   network: createNetworkMetricsSlice(set, get),
   memory: createMemoryMetricsSlice(set, get),
   system: createSystemMetricsSlice(set, get),
+  traffic: createTrafficMetricsSlice(set, get),
 }));
 
 // CPU 指标选择器
@@ -271,5 +274,88 @@ export const useSystemMetricsActions = () => {
 export const useSystemMetrics = () => {
   const data = useSystemMetricsData();
   const actions = useSystemMetricsActions();
+  return { ...data, ...actions };
+};
+
+// 流量指标选择器
+export const useTrafficMetricsData = () => useStore(state => ({
+  // 基本流量数据
+  packets: state.traffic.packets,
+  totalPackets: state.traffic.totalPackets,
+  totalPages: state.traffic.totalPages,
+  
+  // 统计数据
+  stats: state.traffic.stats,
+  
+  // 排名数据
+  topSources: state.traffic.topSources,
+  topDestinations: state.traffic.topDestinations,
+  
+  // 协议统计
+  protocols: state.traffic.protocols,
+  
+  // 异常检测
+  anomalies: state.traffic.anomalies,
+  
+  // 流量体积趋势
+  trafficVolume: state.traffic.trafficVolume,
+  
+  // 活跃连接
+  activeConnections: state.traffic.activeConnections,
+  
+  // 端口使用统计
+  portUsage: state.traffic.portUsage,
+  
+  // 通信对统计
+  communicationPairs: state.traffic.communicationPairs,
+  
+  // 地理位置分布
+  geoDistribution: state.traffic.geoDistribution,
+  
+  // 包大小分布
+  packetSizeDistribution: state.traffic.packetSizeDistribution,
+  
+  // 实时流量
+  realtimeTraffic: state.traffic.realtimeTraffic,
+  
+  // 应用使用情况
+  applications: state.traffic.applications,
+  
+  error: state.traffic.error,
+  isLoading: state.traffic.isLoading,
+  isPolling: state.traffic.isPolling,
+}));
+
+export const useTrafficMetricsActions = () => {
+  const store = useStore();
+  
+  const startPolling = useCallback(() => {
+    store.traffic.startPolling();
+  }, [store.traffic]);
+  
+  const stopPolling = useCallback(() => {
+    store.traffic.stopPolling();
+  }, [store.traffic]);
+  
+  return {
+    startPolling,
+    stopPolling,
+    fetchTrafficPackets: store.traffic.fetchTrafficPackets,
+    fetchTrafficStats: store.traffic.fetchTrafficStats,
+    fetchTrafficAnomalies: store.traffic.fetchTrafficAnomalies,
+    fetchTopSources: store.traffic.fetchTopSources,
+    fetchTopDestinations: store.traffic.fetchTopDestinations,
+    fetchProtocolStats: store.traffic.fetchProtocolStats,
+    fetchTrafficVolume: store.traffic.fetchTrafficVolume,
+    fetchActiveConnections: store.traffic.fetchActiveConnections,
+    fetchGeoDistribution: store.traffic.fetchGeoDistribution,
+    fetchAllTrafficMetrics: store.traffic.fetchAllTrafficMetrics,
+    fetchRealtimeTraffic: store.traffic.fetchRealtimeTraffic
+  };
+};
+
+export const useTrafficMetrics = () => {
+  const data = useTrafficMetricsData();
+  const actions = useTrafficMetricsActions();
   return { ...data, ...actions };
 }; 

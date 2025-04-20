@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Sector, Tooltip } from 'recharts';
 import { useTheme } from 'next-themes';
 
@@ -19,6 +19,11 @@ interface PieChartsProps {
   paddingAngle?: number;
   labelVisible?: boolean;
   title?: string;
+  cx?: string;
+  cy?: string;
+  labelLine?: boolean;
+  activeShape?: (props: any) => JSX.Element;
+  onSliceHover?: (index: number) => void;
 }
 
 const defaultColors = [
@@ -45,19 +50,40 @@ const darkModeColors = [
 
 const PieCharts: React.FC<PieChartsProps> = ({
   data,
+  donut = false,
+  innerRadius = 0,
+  outerRadius = "80%",
+  cx = "50%",
+  cy = "50%",
+  labelLine = true,
   showLegend = true,
   valueUnit = '',
-  innerRadius = 0,
-  outerRadius = '80%',
-  customColors,
-  donut = false,
   activeIndex,
-  paddingAngle = 2,
+  activeShape,
+  paddingAngle = 0,
+  customColors,
+  onSliceHover,
   labelVisible = false,
-  title,
+  title
 }) => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
+  
+  // 确保数据存在且是数组
+  const safeData = useMemo(() => {
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return [];
+    }
+    // 对数据进行安全处理，确保每个项目都有name和value
+    return data.filter(item => item && typeof item === 'object')
+      .map(item => ({
+        name: item.name || 'Unknown',
+        value: typeof item.value === 'number' ? item.value : 0
+      }));
+  }, [data]);
+  
+  // 跟踪活动索引
+  const [activeIdx, setActiveIdx] = useState<number | undefined>(activeIndex);
   
   // 获取颜色数组
   const colorPalette = useMemo(() => {
@@ -65,11 +91,26 @@ const PieCharts: React.FC<PieChartsProps> = ({
     return isDark ? darkModeColors : defaultColors;
   }, [customColors, isDark]);
   
-  // 计算内径，支持甜甜圈图
-  const calculatedInnerRadius = donut ? (typeof innerRadius === 'number' ? innerRadius : 60) : 0;
-  
+  // 如果没有数据，显示空状态
+  if (safeData.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-gray-400">
+        暂无数据
+      </div>
+    );
+  }
+
+  // 处理扇区点击
+  const handleSectorClick = (index: number) => {
+    if (onSliceHover) {
+      onSliceHover(index);
+    } else {
+      setActiveIdx(index === activeIdx ? undefined : index);
+    }
+  };
+
   // 计算总值用于百分比
-  const total = useMemo(() => data.reduce((sum, item) => sum + item.value, 0), [data]);
+  const total = useMemo(() => safeData.reduce((sum, item) => sum + item.value, 0), [safeData]);
   
   // 格式化值
   const formatValue = (value: number) => {
@@ -131,8 +172,10 @@ const PieCharts: React.FC<PieChartsProps> = ({
   };
   
   // 自定义标签
-  const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }: any) => {
+  const renderLabel = (props: any) => {
     if (!labelVisible) return null;
+    
+    const { cx, cy, midAngle, innerRadius, outerRadius, percent, index, name } = props;
     
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -172,27 +215,42 @@ const PieCharts: React.FC<PieChartsProps> = ({
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
+        {title && (
+          <text
+            x="50%"
+            y="5%"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            className="text-lg font-medium"
+            fill={isDark ? '#e5e7eb' : '#4b5563'}
+          >
+            {title}
+          </text>
+        )}
+        
         <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          labelLine={false}
-          label={renderLabel}
-          innerRadius={calculatedInnerRadius}
+          data={safeData}
+          cx={cx}
+          cy={cy}
+          labelLine={labelLine}
+          label={labelVisible ? renderLabel : undefined}
           outerRadius={outerRadius}
+          innerRadius={donut ? innerRadius : 0}
+          fill="#8884d8"
           paddingAngle={paddingAngle}
           dataKey="value"
-          activeIndex={activeIndex}
-          activeShape={activeIndex !== undefined ? renderActiveShape : undefined}
-          animationDuration={1000}
-          animationEasing="ease-out"
+          activeIndex={activeIdx !== undefined ? activeIdx : activeIndex}
+          activeShape={activeShape ? activeShape : renderActiveShape}
+          onClick={(_, index) => handleSectorClick(index)}
+          onMouseEnter={(_, index) => {
+            if (!activeShape) return;
+            handleSectorClick(index);
+          }}
         >
-          {data.map((entry, index) => (
+          {safeData.map((entry, index) => (
             <Cell 
               key={`cell-${index}`} 
               fill={colorPalette[index % colorPalette.length]} 
-              stroke={isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255, 255, 255, 0.8)'} 
-              strokeWidth={1}
             />
           ))}
         </Pie>
@@ -210,7 +268,7 @@ const PieCharts: React.FC<PieChartsProps> = ({
               fontSize: '14px',
             }}
             formatter={(value, entry: any, index) => {
-              const percent = ((data[index].value / total) * 100).toFixed(1);
+              const percent = ((safeData[index].value / total) * 100).toFixed(1);
               return (
                 <span style={{ color: isDark ? '#e5e7eb' : '#4b5563' }}>
                   {value} ({percent}%)

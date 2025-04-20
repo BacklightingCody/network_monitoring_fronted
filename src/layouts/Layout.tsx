@@ -6,7 +6,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
 const navigation = [
   { name: '监控概览', path: '/', icon: Monitor },
   { name: '资源管理', path: '/resources', icon: Server },
-  { name: '网络设备', path: '/network-devices', icon: Network },
+  { name: '网络资源', path: '/network-resource', icon: Network },
   { name: '拓扑图', path: '/topology', icon: Share2 },
   { name: '系统设置', path: '/settings', icon: Settings },
   { name: '系统日志', path: '/logs', icon: Library }

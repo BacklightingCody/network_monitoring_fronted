@@ -1,19 +1,40 @@
 import { StateCreator } from 'zustand';
-import { getAllSystemMetrics } from '@/services/api/system';
 import { StoreState } from '../index';
+import { 
+  getBootTime, 
+  getCpuQueueLength, 
+  getContextSwitches, 
+  getExceptionDispatches, 
+  getSystemCalls, 
+  getDiskIO, 
+  getHostname, 
+  getLogicalProcessors, 
+  getMemoryFree, 
+  getPhysicalMemory, 
+  getProcesses, 
+  getProcessesLimit, 
+  getServices, 
+  getServiceState, 
+  getSystemTime, 
+  getThreads, 
+  getTimezone, 
+  getUsers, 
+  getCollectorDuration,
+  getAllSystemMetrics
+} from '@/services/api/system';
 import { timeRangeMs } from '@/components/metrics/constant';
 
 // 定义系统指标数据点
 export interface SystemMetricPoint {
-  time: string;
+  time: number;
   value: number;
 }
 
 export interface ServiceState {
   name: string;
-  state: string;
-  displayName?: string;
-  startType?: string;
+  state: 'running' | 'stopped' | 'unknown';
+  displayName: string;
+  startType: string;
 }
 
 // 定义系统指标状态
@@ -70,9 +91,7 @@ export interface SystemMetricsState {
 // 定义系统指标操作
 export interface SystemMetricsActions {
   fetchSystemMetrics: () => Promise<void>;
-  updateMetrics: (metrics: Partial<SystemMetricsState>) => void;
   setError: (error: string | null) => void;
-  setLoading: (isLoading: boolean) => void;
   startPolling: () => void;
   stopPolling: () => void;
 }
@@ -83,7 +102,7 @@ export type SystemMetricsSlice = SystemMetricsState & SystemMetricsActions;
 export const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 B';
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
 };
@@ -95,50 +114,44 @@ export const formatPercentage = (value: number): string => {
 
 // 格式化运行时间
 const formatUptime = (seconds: number): string => {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
+  const days = Math.floor(seconds / (24 * 60 * 60));
+  seconds -= days * 24 * 60 * 60;
+  const hours = Math.floor(seconds / (60 * 60));
+  seconds -= hours * 60 * 60;
+  const minutes = Math.floor(seconds / 60);
+  seconds -= minutes * 60;
+  seconds = Math.floor(seconds);
 
-  const parts = [];
-  if (days > 0) parts.push(`${days}天`);
-  if (hours > 0) parts.push(`${hours}小时`);
-  if (minutes > 0) parts.push(`${minutes}分钟`);
-  if (secs > 0) parts.push(`${secs}秒`);
+  let result = '';
+  if (days > 0) result += `${days}天 `;
+  if (hours > 0 || days > 0) result += `${hours}小时 `;
+  if (minutes > 0 || hours > 0 || days > 0) result += `${minutes}分钟 `;
+  result += `${seconds}秒`;
 
-  return parts.join(' ');
+  return result;
 };
 
 // 从指标数据中提取值
-const extractMetricValue = (metricData: any, defaultValue: any = 0): any => {
-  if (!metricData || !Array.isArray(metricData) || metricData.length === 0) {
-    return defaultValue;
+const extractMetricValue = (data: any): number => {
+  if (!data || !Array.isArray(data) || data.length === 0) return 0;
+  
+  // 尝试从Prometheus格式的响应中提取值
+  try {
+    const metricValue = parseFloat(data[0]?.value?.[1] || '0');
+    return isNaN(metricValue) ? 0 : metricValue;
+  } catch (error) {
+    console.error('Error extracting metric value:', error);
+    return 0;
   }
-  
-  // 对于大多数指标，我们取第一个元素的值
-  const item = metricData[0];
-  
-  if (item.value && Array.isArray(item.value) && item.value.length >= 2) {
-    // 如果值是数组（如 [timestamp, value]），取第二个元素
-    return isNaN(Number(item.value[1])) ? item.value[1] : Number(item.value[1]);
-  } else if (item.metric && item.metric.value) {
-    // 如果值存储在 metric.value 中
-    return isNaN(Number(item.metric.value)) ? item.metric.value : Number(item.metric.value);
-  } else if (item.metric && item.metric.__name__) {
-    // 如果是文本值，如主机名
-    return item.metric.__name__;
-  }
-  
-  return defaultValue;
 };
 
 const initialState: SystemMetricsState = {
-  hostname: '',
-  timezone: '',
+  hostname: 'Unknown',
+  timezone: 'Unknown',
   bootTime: 0,
   systemTime: 0,
   uptime: 0,
-  uptimeFormatted: '',
+  uptimeFormatted: '0秒',
   processes: 0,
   processesLimit: 0,
   threads: 0,
@@ -182,42 +195,45 @@ export const createSystemMetricsSlice: StateCreator<
     set(state => ({ system: { ...state.system, ...newState } }));
 
   // 处理服务状态数据
-  const processServiceStates = (services: any[], serviceStates: any[]): ServiceState[] => {
-    if (!Array.isArray(services) || !Array.isArray(serviceStates)) {
-      return [];
-    }
-
-    const servicesMap = new Map<string, ServiceState>();
+  const processServiceStates = (servicesRaw: any[], serviceStates: any[]): ServiceState[] => {
+    const services: ServiceState[] = [];
     
-    // 处理服务基本信息
-    services.forEach(service => {
-      // 确保有metric对象
-      if (!service.metric) return;
-      
-      const name = service.metric.name || 'unknown';
-      servicesMap.set(name, {
-        name,
-        displayName: service.metric.display_name || name,
-        startType: service.metric.start_type || 'Unknown',
-        state: 'Unknown'
-      });
-    });
-    
-    // 处理服务状态信息
-    serviceStates.forEach(state => {
-      // 确保有metric对象和值数组
-      if (!state.metric || !state.value || !Array.isArray(state.value)) return;
-      
-      const name = state.metric.name || 'unknown';
-      const stateValue = Number(state.value[1] || 0);
-      
-      if (servicesMap.has(name)) {
-        const service = servicesMap.get(name)!;
-        service.state = stateValue === 1 ? 'Running' : 'Stopped';
+    // 提取服务信息
+    if (Array.isArray(servicesRaw) && servicesRaw.length > 0) {
+      for (const serviceInfo of servicesRaw) {
+        try {
+          const metric = serviceInfo.metric || {};
+          const name = metric.name || 'Unknown';
+          const displayName = metric.display_name || name;
+          const startType = metric.start_type || 'Unknown';
+          
+          // 查找对应的服务状态
+          let state: 'running' | 'stopped' | 'unknown' = 'unknown';
+          
+          if (Array.isArray(serviceStates)) {
+            const matchingState = serviceStates.find(
+              stateInfo => stateInfo.metric?.name === name
+            );
+            
+            if (matchingState) {
+              const stateValue = parseFloat(matchingState.value?.[1] || '0');
+              state = stateValue === 1 ? 'running' : 'stopped';
+            }
+          }
+          
+          services.push({
+            name,
+            displayName,
+            startType,
+            state
+          });
+        } catch (error) {
+          console.error('Error processing service state:', error);
+        }
       }
-    });
+    }
     
-    return Array.from(servicesMap.values());
+    return services;
   };
 
   return {
@@ -234,8 +250,8 @@ export const createSystemMetricsSlice: StateCreator<
         const currentTime = new Date().toLocaleTimeString();
 
         // 提取各项指标数据
-        const hostname = extractMetricValue(allMetrics.hostname, '未知主机');
-        const timezone = extractMetricValue(allMetrics.timezone, '未知时区');
+        const hostname = extractMetricValue(allMetrics.hostname);
+        const timezone = allMetrics.timezone?.[0]?.value?.[1] || 'Unknown';
         const bootTime = extractMetricValue(allMetrics.bootTime);
         const systemTime = extractMetricValue(allMetrics.systemTime);
         const uptime = systemTime > bootTime ? systemTime - bootTime : 0;
@@ -263,8 +279,8 @@ export const createSystemMetricsSlice: StateCreator<
           Array.isArray(allMetrics.services) ? allMetrics.services : [],
           Array.isArray(allMetrics.serviceState) ? allMetrics.serviceState : []
         );
-        const runningServicesCount = services.filter(s => s.state === 'Running').length;
-        const stoppedServicesCount = services.filter(s => s.state === 'Stopped').length;
+        const runningServicesCount = services.filter(s => s.state === 'running').length;
+        const stoppedServicesCount = services.filter(s => s.state === 'stopped').length;
 
         // 处理性能收集器
         // 如果收集器持续时间是数组，取最后一个值
@@ -278,7 +294,7 @@ export const createSystemMetricsSlice: StateCreator<
 
         // 更新状态
         updateSystem({
-          hostname,
+          hostname: hostname.toString(),
           timezone,
           bootTime,
           systemTime,
@@ -305,42 +321,42 @@ export const createSystemMetricsSlice: StateCreator<
           // 更新趋势数据
           systemTimeTrend: [
             ...systemState.systemTimeTrend,
-            { time: currentTime, value: systemTime }
+            { time: Date.now(), value: systemTime }
           ].slice(-20), // 仅保留最近20个数据点
           
           processesTrend: [
             ...systemState.processesTrend,
-            { time: currentTime, value: processes }
+            { time: Date.now(), value: processes }
           ].slice(-20),
           
           threadsTrend: [
             ...systemState.threadsTrend,
-            { time: currentTime, value: threads }
+            { time: Date.now(), value: threads }
           ].slice(-20),
           
           cpuQueueTrend: [
             ...systemState.cpuQueueTrend,
-            { time: currentTime, value: cpuQueueLength }
+            { time: Date.now(), value: cpuQueueLength }
           ].slice(-20),
           
           contextSwitchesTrend: [
             ...systemState.contextSwitchesTrend,
-            { time: currentTime, value: contextSwitches }
+            { time: Date.now(), value: contextSwitches }
           ].slice(-20),
           
           exceptionDispatchesTrend: [
             ...systemState.exceptionDispatchesTrend,
-            { time: currentTime, value: exceptionDispatches }
+            { time: Date.now(), value: exceptionDispatches }
           ].slice(-20),
           
           systemCallsTrend: [
             ...systemState.systemCallsTrend,
-            { time: currentTime, value: systemCalls }
+            { time: Date.now(), value: systemCalls }
           ].slice(-20),
           
           diskIOTrend: [
             ...systemState.diskIOTrend,
-            { time: currentTime, value: diskIO }
+            { time: Date.now(), value: diskIO }
           ].slice(-20),
           
           isLoading: false
@@ -352,9 +368,7 @@ export const createSystemMetricsSlice: StateCreator<
       }
     },
 
-    updateMetrics: (metrics) => updateSystem(metrics),
     setError: (error) => updateSystem({ error }),
-    setLoading: (isLoading) => updateSystem({ isLoading }),
 
     startPolling: () => {
       const currentState = get().system;
@@ -364,22 +378,13 @@ export const createSystemMetricsSlice: StateCreator<
       // 先设置状态
       updateSystem({ isPolling: true });
 
-      // 定义一个不依赖闭包的函数来获取最新状态
-      const fetchMetrics = () => {
-        // 每次都从 store 获取最新状态
-        const state = get().system;
-        if (state.isPolling) {
-          state.fetchSystemMetrics().catch(err =>
-            console.error('轮询期间获取系统指标失败:', err)
-          );
-        }
-      };
-
       // 立即执行一次获取
-      fetchMetrics();
-
+      get().system.fetchSystemMetrics();
+      
       // 设置轮询间隔
-      pollingInterval = setInterval(fetchMetrics, 5000);
+      pollingInterval = setInterval(() => {
+        get().system.fetchSystemMetrics();
+      }, 5000);
     },
 
     stopPolling: () => {

@@ -68,42 +68,73 @@ const BarCharts: React.FC<BarChartsProps> = ({
     return isDark ? darkModeColors : defaultColors;
   }, [customColors, isDark]);
   
+  // 确保数据存在且是数组
+  const safeData = useMemo(() => {
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return [];
+    }
+    return data;
+  }, [data]);
+
   // 格式化数据以适合 recharts
   const chartData = useMemo(() => {
+    // 如果没有数据，返回空数组
+    if (safeData.length === 0) return [];
+    
     // 如果数据已经是扁平的时间序列格式，直接返回
-    if (data.length > 0 && 'time' in data[0]) {
-      return data;
+    if ('time' in safeData[0] || xAxisKey in safeData[0]) {
+      return safeData;
     }
     
     // 假设数据是多个序列的集合，需要转换为扁平格式
-    if (data.length === 0) return [];
-    
-    // 使用第一个序列的时间点作为基准
-    const timePoints = data[0].data.map(d => d.time);
-    
-    return timePoints.map((time, timeIdx) => {
-      const point: any = { [xAxisKey]: time };
+    try {
+      // 使用第一个序列的时间点作为基准（确保data[0].data存在且是数组）
+      if (!safeData[0].data || !Array.isArray(safeData[0].data) || safeData[0].data.length === 0) {
+        return [];
+      }
       
-      data.forEach((series, seriesIdx) => {
-        const seriesName = series.name || `系列${seriesIdx + 1}`;
-        const value = series.data[timeIdx]?.value || 0;
-        point[seriesName] = value;
+      const timePoints = safeData[0].data.map(d => d.time);
+      
+      return timePoints.map((time, timeIdx) => {
+        const point: any = { [xAxisKey]: time };
+        
+        safeData.forEach((series, seriesIdx) => {
+          if (series && series.data && Array.isArray(series.data) && timeIdx < series.data.length) {
+            const seriesName = series.name || `系列${seriesIdx + 1}`;
+            const value = series.data[timeIdx]?.value || 0;
+            point[seriesName] = value;
+          }
+        });
+        
+        return point;
       });
-      
-      return point;
-    });
-  }, [data, xAxisKey]);
+    } catch (error) {
+      console.error('Error formatting chart data:', error);
+      return [];
+    }
+  }, [safeData, xAxisKey]);
   
   // 获取所有系列的名称
   const seriesNames = useMemo(() => {
-    if (data.length > 0 && 'time' in data[0]) {
+    if (safeData.length === 0) return [];
+    
+    if ('time' in safeData[0] || xAxisKey in safeData[0]) {
       // 扁平数据，排除时间字段
-      return Object.keys(data[0]).filter(key => key !== xAxisKey);
+      return Object.keys(safeData[0]).filter(key => key !== xAxisKey);
     }
     
     // 多系列数据
-    return data.map(series => series.name || '未命名系列');
-  }, [data, xAxisKey]);
+    return safeData.map(series => series.name || '未命名系列');
+  }, [safeData, xAxisKey]);
+  
+  // 如果没有数据，显示空状态
+  if (chartData.length === 0 || seriesNames.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-gray-400">
+        暂无数据
+      </div>
+    );
+  }
   
   // 格式化工具提示和轴标签
   const formatValue = (value: number) => {

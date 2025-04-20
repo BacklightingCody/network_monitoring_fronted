@@ -138,6 +138,7 @@ export const createNetworkMetricsSlice: StateCreator<
         updateNetwork({ isLoading: true, error: null });
 
         const allMetrics = await getNetworkAllMetrics();
+        console.log(allMetrics,'111')
         const currentTime = new Date().toLocaleTimeString();
 
         const {
