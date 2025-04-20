@@ -1,17 +1,5 @@
 import { StateCreator } from 'zustand';
-import {
-  getAllTrafficMetrics,
-  getTrafficPackets,
-  getTrafficStats,
-  getTrafficAnomalies,
-  getTopSources,
-  getTopDestinations,
-  getProtocolStats,
-  getTrafficVolume,
-  getActiveConnections,
-  getGeoDistribution,
-  getRealtimeTraffic
-} from '@/services/api/traffic';
+import { getAllTrafficMetrics, getRealtimeTraffic } from '@/services/api/traffic';
 import { StoreState } from '../index';
 
 // 定义数据包类型
@@ -138,20 +126,22 @@ export interface RealtimeTraffic {
 
 // 定义流量状态
 export interface TrafficMetricsState {
-  // 基本流量数据
-  packets: TrafficPacket[];
-  totalPackets: number;
-  totalPages: number;
-  
-  // 统计数据
-  stats: {
+  // 基本统计数据
+  basicStats: {
     totalBytes: number;
-    totalPackets: number;
-    averagePacketSize: number;
-    bytePerSecond: number;
-    packetPerSecond: number;
-    startTime: string;
-    endTime: string;
+    count: number;
+    avgSize: number;
+    timeRange: {
+      start: string;
+      end: string;
+    }
+  };
+  
+  // 摘要数据
+  summary: {
+    lastHourTraffic: number;
+    anomalyCount: number;
+    lastCaptureTime: string;
   };
   
   // 排名数据
@@ -159,47 +149,60 @@ export interface TrafficMetricsState {
   topDestinations: IPRanking[];
   
   // 协议统计
-  protocols: ProtocolStat[];
+  protocolStats: ProtocolStat[];
+  protocols: any[]; // 兼容NetworkResource.tsx中的调用
   
   // 异常检测
   anomalies: TrafficAnomaly[];
   
-  // 流量体积趋势
-  trafficVolume: {
-    inbound: TrafficPoint[];
-    outbound: TrafficPoint[];
-    total: TrafficPoint[];
-  };
-  
   // 活跃连接
   activeConnections: ActiveConnection[];
-  
-  // 端口使用统计
-  portUsage: PortUsage[];
   
   // 通信对统计
   communicationPairs: CommunicationPair[];
   
-  // 地理位置分布
-  geoDistribution: GeoLocation[];
-  
   // 包大小分布
-  packetSizeDistribution: PacketSizeDistribution[];
+  packetSizes: PacketSizeDistribution[];
+  packetSizeDistribution: PacketSizeDistribution[]; // 兼容NetworkResource.tsx中的调用
   
   // 实时流量
-  realtimeTraffic: RealtimeTraffic[];
+  realtimeTraffic: {
+    timePoints: RealtimeTraffic[];
+  };
   
   // 应用使用情况
   applications: ApplicationUsage[];
+  
+  // 基本数据包信息
+  packets: TrafficPacket[];
+  totalPackets: number;
+  totalPages: number;
+  
+  // 统计数据
+  stats: any;
+  
+  // 流量体积趋势
+  trafficVolume: any[];
+  
+  // 端口使用统计
+  portUsage: PortUsage[];
+  
+  // 地理位置分布
+  geoDistribution: GeoLocation[];
   
   // 状态管理
   error: string | null;
   isLoading: boolean;
   isPolling: boolean;
+  pollInterval: NodeJS.Timeout | null;
 }
 
 // 定义流量操作
 export interface TrafficMetricsActions {
+  fetchAllTrafficMetrics: () => Promise<void>;
+  fetchRealtimeTraffic: () => Promise<void>;
+  
+  // 兼容NetworkResource.tsx中的调用
   fetchTrafficPackets: (params?: any) => Promise<void>;
   fetchTrafficStats: (params?: any) => Promise<void>;
   fetchTrafficAnomalies: (params?: any) => Promise<void>;
@@ -209,50 +212,57 @@ export interface TrafficMetricsActions {
   fetchTrafficVolume: (params?: any) => Promise<void>;
   fetchActiveConnections: (params?: any) => Promise<void>;
   fetchGeoDistribution: (params?: any) => Promise<void>;
-  fetchAllTrafficMetrics: () => Promise<void>;
+  
   startPolling: () => void;
   stopPolling: () => void;
-  fetchRealtimeTraffic: () => Promise<void>;
-  updateTrafficMetrics: (metrics: Partial<TrafficMetricsState>) => void;
   setError: (error: string | null) => void;
-  setLoading: (isLoading: boolean) => void;
 }
 
 export type TrafficMetricsSlice = TrafficMetricsState & TrafficMetricsActions;
 
 // 初始状态
 const initialState: TrafficMetricsState = {
-  packets: [],
-  totalPackets: 0,
-  totalPages: 0,
-  stats: {
+  basicStats: {
     totalBytes: 0,
-    totalPackets: 0,
-    averagePacketSize: 0,
-    bytePerSecond: 0,
-    packetPerSecond: 0,
-    startTime: '',
-    endTime: '',
+    count: 0,
+    avgSize: 0,
+    timeRange: {
+      start: '',
+      end: ''
+    }
+  },
+  summary: {
+    lastHourTraffic: 0,
+    anomalyCount: 0,
+    lastCaptureTime: ''
   },
   topSources: [],
   topDestinations: [],
-  protocols: [],
+  protocolStats: [],
+  protocols: [], // 兼容NetworkResource.tsx中的调用
   anomalies: [],
-  trafficVolume: {
-    inbound: [],
-    outbound: [],
-    total: [],
-  },
   activeConnections: [],
-  portUsage: [],
   communicationPairs: [],
-  geoDistribution: [],
-  packetSizeDistribution: [],
-  realtimeTraffic: [],
+  packetSizes: [],
+  packetSizeDistribution: [], // 兼容NetworkResource.tsx中的调用
+  realtimeTraffic: {
+    timePoints: []
+  },
   applications: [],
+  
+  // 新增的字段
+  packets: [],
+  totalPackets: 0,
+  totalPages: 0,
+  stats: {},
+  trafficVolume: [],
+  portUsage: [],
+  geoDistribution: [],
+  
   error: null,
   isLoading: false,
   isPolling: false,
+  pollInterval: null,
 };
 
 export const createTrafficMetricsSlice: StateCreator<
@@ -260,7 +270,7 @@ export const createTrafficMetricsSlice: StateCreator<
   [],
   [],
   TrafficMetricsSlice
-> = (set, get) => {
+> = (set, get, api) => {
   let pollingInterval: NodeJS.Timeout | null = null;
   let realtimeInterval: NodeJS.Timeout | null = null;
   
@@ -270,140 +280,68 @@ export const createTrafficMetricsSlice: StateCreator<
   return {
     ...initialState,
     
-    fetchTrafficPackets: async (params = {}) => {
+    fetchAllTrafficMetrics: async () => {
+      const trafficState = get().traffic;
+      if (trafficState.isLoading) return;
+      
       try {
-        updateTraffic({ isLoading: true, error: null });
-        const response = await getTrafficPackets(params);
-        updateTraffic({
-          packets: response.data?.packets || [],
-          totalPackets: response.data?.total || 0,
-          totalPages: response.data?.totalPages || 0,
-          isLoading: false
-        });
+        // 使用直接set而不是updateTraffic以避免嵌套更新
+        set(state => ({ 
+          traffic: { 
+            ...state.traffic, 
+            isLoading: true, 
+            error: null
+          } 
+        }));
+        
+        const response = await getAllTrafficMetrics();
+        console.log(response,'response')
+        // 确保响应数据存在
+        if (response) {
+          const data = response as any; // 将响应转为any类型以访问属性
+          
+          // 使用直接set而不是updateTraffic以避免嵌套更新
+          set(state => ({ 
+            traffic: { 
+              ...state.traffic,
+              basicStats: data.basicStats || initialState.basicStats,
+              summary: data.summary || initialState.summary,
+              topSources: data.topSources || [],
+              topDestinations: data.topDestinations || [],
+              protocolStats: data.protocolStats || [],
+              protocols: data.protocolStats || [], // 兼容NetworkResource.tsx中的调用
+              anomalies: data.anomalies || [],
+              activeConnections: data.activeConnections || [],
+              communicationPairs: data.communicationPairs || [],
+              packetSizes: data.packetSizes || [],
+              packetSizeDistribution: data.packetSizes || [], // 兼容NetworkResource.tsx中的调用
+              applications: data.applications || [],
+              
+              // 处理其他可能的数据
+              packets: data.packets || [],
+              totalPackets: data.totalPackets || 0,
+              totalPages: data.totalPages || 0,
+              stats: data.stats || {},
+              trafficVolume: data.trafficVolume || [],
+              portUsage: data.portUsage || [],
+              geoDistribution: data.geoDistribution || [],
+              
+              isLoading: false
+            } 
+          }));
+        } else {
+          throw new Error('获取流量数据失败: 响应为空');
+        }
       } catch (error) {
-        console.error('获取流量数据包失败:', error);
+        console.error('获取所有流量数据失败:', error);
         const errorMessage = error instanceof Error ? error.message : '获取数据失败，请稍后重试';
-        updateTraffic({ error: errorMessage, isLoading: false });
-      }
-    },
-    
-    fetchTrafficStats: async (params = {}) => {
-      try {
-        updateTraffic({ isLoading: true, error: null });
-        const response = await getTrafficStats(params);
-        updateTraffic({
-          stats: response.data || initialState.stats,
-          isLoading: false
-        });
-      } catch (error) {
-        console.error('获取流量统计数据失败:', error);
-        const errorMessage = error instanceof Error ? error.message : '获取数据失败，请稍后重试';
-        updateTraffic({ error: errorMessage, isLoading: false });
-      }
-    },
-    
-    fetchTrafficAnomalies: async (params = {}) => {
-      try {
-        updateTraffic({ isLoading: true, error: null });
-        const response = await getTrafficAnomalies(params);
-        updateTraffic({
-          anomalies: response.data || [],
-          isLoading: false
-        });
-      } catch (error) {
-        console.error('获取流量异常数据失败:', error);
-        const errorMessage = error instanceof Error ? error.message : '获取数据失败，请稍后重试';
-        updateTraffic({ error: errorMessage, isLoading: false });
-      }
-    },
-    
-    fetchTopSources: async (params = {}) => {
-      try {
-        updateTraffic({ isLoading: true, error: null });
-        const response = await getTopSources(params);
-        updateTraffic({
-          topSources: response.data || [],
-          isLoading: false
-        });
-      } catch (error) {
-        console.error('获取来源IP排名失败:', error);
-        const errorMessage = error instanceof Error ? error.message : '获取数据失败，请稍后重试';
-        updateTraffic({ error: errorMessage, isLoading: false });
-      }
-    },
-    
-    fetchTopDestinations: async (params = {}) => {
-      try {
-        updateTraffic({ isLoading: true, error: null });
-        const response = await getTopDestinations(params);
-        updateTraffic({
-          topDestinations: response.data || [],
-          isLoading: false
-        });
-      } catch (error) {
-        console.error('获取目标IP排名失败:', error);
-        const errorMessage = error instanceof Error ? error.message : '获取数据失败，请稍后重试';
-        updateTraffic({ error: errorMessage, isLoading: false });
-      }
-    },
-    
-    fetchProtocolStats: async (params = {}) => {
-      try {
-        updateTraffic({ isLoading: true, error: null });
-        const response = await getProtocolStats(params);
-        updateTraffic({
-          protocols: response.data || [],
-          isLoading: false
-        });
-      } catch (error) {
-        console.error('获取协议统计失败:', error);
-        const errorMessage = error instanceof Error ? error.message : '获取数据失败，请稍后重试';
-        updateTraffic({ error: errorMessage, isLoading: false });
-      }
-    },
-    
-    fetchTrafficVolume: async (params = {}) => {
-      try {
-        updateTraffic({ isLoading: true, error: null });
-        const response = await getTrafficVolume(params);
-        updateTraffic({
-          trafficVolume: response.data || initialState.trafficVolume,
-          isLoading: false
-        });
-      } catch (error) {
-        console.error('获取流量体积趋势数据失败:', error);
-        const errorMessage = error instanceof Error ? error.message : '获取数据失败，请稍后重试';
-        updateTraffic({ error: errorMessage, isLoading: false });
-      }
-    },
-    
-    fetchActiveConnections: async (params = {}) => {
-      try {
-        updateTraffic({ isLoading: true, error: null });
-        const response = await getActiveConnections(params);
-        updateTraffic({
-          activeConnections: response.data || [],
-          isLoading: false
-        });
-      } catch (error) {
-        console.error('获取活跃连接失败:', error);
-        const errorMessage = error instanceof Error ? error.message : '获取数据失败，请稍后重试';
-        updateTraffic({ error: errorMessage, isLoading: false });
-      }
-    },
-    
-    fetchGeoDistribution: async (params = {}) => {
-      try {
-        updateTraffic({ isLoading: true, error: null });
-        const response = await getGeoDistribution(params);
-        updateTraffic({
-          geoDistribution: response.data || [],
-          isLoading: false
-        });
-      } catch (error) {
-        console.error('获取地理位置分布失败:', error);
-        const errorMessage = error instanceof Error ? error.message : '获取数据失败，请稍后重试';
-        updateTraffic({ error: errorMessage, isLoading: false });
+        set(state => ({ 
+          traffic: { 
+            ...state.traffic, 
+            error: errorMessage, 
+            isLoading: false
+          } 
+        }));
       }
     },
     
@@ -411,98 +349,130 @@ export const createTrafficMetricsSlice: StateCreator<
       try {
         // 实时数据不设置loading，避免UI闪烁
         const response = await getRealtimeTraffic();
-        const trafficState = get().traffic;
         
-        // 保持最近30个数据点
-        let newRealtimeTraffic = [...trafficState.realtimeTraffic];
-        if (response.data) {
-          newRealtimeTraffic.push(response.data);
-          if (newRealtimeTraffic.length > 30) {
-            newRealtimeTraffic = newRealtimeTraffic.slice(-30);
+        if (response) {
+          const data = response as any; // 将响应转为any类型
+          const trafficState = get().traffic;
+          
+          // 更新实时流量数据，保持最新的30个数据点
+          const timePoints = [...(trafficState.realtimeTraffic.timePoints || [])];
+          
+          if (data.timePoints && Array.isArray(data.timePoints)) {
+            timePoints.push(...data.timePoints);
+            // 最多保留30个数据点
+            if (timePoints.length > 30) {
+              timePoints.splice(0, timePoints.length - 30);
+            }
           }
+          
+          // 使用直接set而不是updateTraffic避免嵌套更新
+          set(state => ({ 
+            traffic: { 
+              ...state.traffic, 
+              realtimeTraffic: { timePoints }
+            } 
+          }));
         }
-        
-        updateTraffic({
-          realtimeTraffic: newRealtimeTraffic
-        });
       } catch (error) {
         console.error('获取实时流量数据失败:', error);
-        // 对于实时数据，我们不设置全局错误状态
+        // 对于实时数据，不设置全局错误状态，以免影响用户体验
       }
     },
     
-    fetchAllTrafficMetrics: async () => {
-      const trafficState = get().traffic;
-      if (trafficState.isLoading) return;
-      
-      try {
-        updateTraffic({ isLoading: true, error: null });
-        
-        const response = await getAllTrafficMetrics();
-        const allMetrics = response.data || {};
-        
-        updateTraffic({
-          packets: allMetrics.packets?.data || [],
-          totalPackets: allMetrics.packets?.total || 0,
-          stats: allMetrics.stats || initialState.stats,
-          topSources: allMetrics.topSources || [],
-          topDestinations: allMetrics.topDestinations || [],
-          protocols: allMetrics.protocols || [],
-          anomalies: allMetrics.anomalies || [],
-          trafficVolume: allMetrics.trafficVolume || initialState.trafficVolume,
-          activeConnections: allMetrics.activeConnections || [],
-          geoDistribution: allMetrics.geoDistribution || [],
-          packetSizeDistribution: allMetrics.packetSizeDistribution || [],
-          applications: allMetrics.applications || [],
-          isLoading: false
-        });
-      } catch (error) {
-        console.error('获取所有流量数据失败:', error);
-        const errorMessage = error instanceof Error ? error.message : '获取数据失败，请稍后重试';
-        updateTraffic({ error: errorMessage, isLoading: false });
-      }
+    // 添加兼容NetworkResource.tsx的方法
+    fetchTrafficPackets: async (params = {}) => {
+      // 这些方法目前可以简单调用fetchAllTrafficMetrics，因为我们使用的是聚合API
+      await get().traffic.fetchAllTrafficMetrics();
     },
     
-    updateTrafficMetrics: (metrics) => updateTraffic(metrics),
+    fetchTrafficStats: async (params = {}) => {
+      await get().traffic.fetchAllTrafficMetrics();
+    },
+    
+    fetchTrafficAnomalies: async (params = {}) => {
+      await get().traffic.fetchAllTrafficMetrics();
+    },
+    
+    fetchTopSources: async (params = {}) => {
+      await get().traffic.fetchAllTrafficMetrics();
+    },
+    
+    fetchTopDestinations: async (params = {}) => {
+      await get().traffic.fetchAllTrafficMetrics();
+    },
+    
+    fetchProtocolStats: async (params = {}) => {
+      await get().traffic.fetchAllTrafficMetrics();
+    },
+    
+    fetchTrafficVolume: async (params = {}) => {
+      await get().traffic.fetchAllTrafficMetrics();
+    },
+    
+    fetchActiveConnections: async (params = {}) => {
+      await get().traffic.fetchAllTrafficMetrics();
+    },
+    
+    fetchGeoDistribution: async (params = {}) => {
+      await get().traffic.fetchAllTrafficMetrics();
+    },
+    
     setError: (error) => updateTraffic({ error }),
-    setLoading: (isLoading) => updateTraffic({ isLoading }),
     
     startPolling: () => {
-      const currentState = get().traffic;
-      // 如果已经在轮询中，直接返回
-      if (currentState.isPolling || pollingInterval) return;
+      // 先检查当前状态，避免重复启动轮询
+      const isCurrentlyPolling = get().traffic.isPolling;
+      if (isCurrentlyPolling) return;
       
-      // 先设置状态
-      updateTraffic({ isPolling: true });
+      // 确保在启动新轮询前清除任何现有的轮询
+      const existingInterval = get().traffic.pollInterval;
+      if (existingInterval) {
+        clearInterval(existingInterval);
+      }
       
-      // 立即执行一次获取
-      get().traffic.fetchAllTrafficMetrics();
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
       
-      // 启动整体数据的轮询（每分钟一次）
+      // 开始轮询
       pollingInterval = setInterval(() => {
         get().traffic.fetchAllTrafficMetrics();
-      }, 60000);
-      
-      // 启动实时数据的轮询（每秒一次）
-      realtimeInterval = setInterval(() => {
         get().traffic.fetchRealtimeTraffic();
-      }, 1000);
+      }, 5000); // 每5秒更新一次
+      
+      // 更新状态，使用直接set而不是updateTraffic
+      set(state => ({ 
+        traffic: { 
+          ...state.traffic, 
+          isPolling: true,
+          pollInterval: pollingInterval
+        } 
+      }));
     },
     
     stopPolling: () => {
-      // 清除定时器
+      // 直接从state中读取轮询间隔
+      const pollIntervalFromState = get().traffic.pollInterval;
+      
+      // 如果存在来自状态的轮询间隔，先清除它
+      if (pollIntervalFromState) {
+        clearInterval(pollIntervalFromState);
+      }
+      
+      // 如果存在模块级变量轮询间隔，也清除它
       if (pollingInterval) {
         clearInterval(pollingInterval);
         pollingInterval = null;
       }
       
-      if (realtimeInterval) {
-        clearInterval(realtimeInterval);
-        realtimeInterval = null;
-      }
-      
-      // 更新状态
-      updateTraffic({ isPolling: false });
+      // 只进行一次状态更新，而不是在更新中再次调用自己
+      set(state => ({ 
+        traffic: { 
+          ...state.traffic, 
+          isPolling: false,
+          pollInterval: null
+        } 
+      }));
     }
   };
 }; 

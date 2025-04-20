@@ -18,13 +18,13 @@ export interface StoreState {
 }
 
 // 创建 store
-export const useStore = create<StoreState>()((set, get) => ({
-  cpu: createCpuMetricsSlice(set, get),
-  disk: createDiskMetricsSlice(set, get),
-  network: createNetworkMetricsSlice(set, get),
-  memory: createMemoryMetricsSlice(set, get),
-  system: createSystemMetricsSlice(set, get),
-  traffic: createTrafficMetricsSlice(set, get),
+export const useStore = create<StoreState>()((set, get, api) => ({
+  cpu: createCpuMetricsSlice(set, get, api),
+  disk: createDiskMetricsSlice(set, get, api),
+  network: createNetworkMetricsSlice(set, get, api),
+  memory: createMemoryMetricsSlice(set, get, api),
+  system: createSystemMetricsSlice(set, get, api),
+  traffic: createTrafficMetricsSlice(set, get, api),
 }));
 
 // CPU 指标选择器
@@ -287,12 +287,19 @@ export const useTrafficMetricsData = () => useStore(state => ({
   // 统计数据
   stats: state.traffic.stats,
   
+  // 基本统计数据
+  basicStats: state.traffic.basicStats,
+  
+  // 摘要数据
+  summary: state.traffic.summary,
+  
   // 排名数据
   topSources: state.traffic.topSources,
   topDestinations: state.traffic.topDestinations,
   
   // 协议统计
   protocols: state.traffic.protocols,
+  protocolStats: state.traffic.protocolStats,
   
   // 异常检测
   anomalies: state.traffic.anomalies,
@@ -314,6 +321,7 @@ export const useTrafficMetricsData = () => useStore(state => ({
   
   // 包大小分布
   packetSizeDistribution: state.traffic.packetSizeDistribution,
+  packetSizes: state.traffic.packetSizes,
   
   // 实时流量
   realtimeTraffic: state.traffic.realtimeTraffic,
