@@ -10,6 +10,7 @@ import { useNetworkMetrics } from '@/stores';
 export function NetworkMetrics() {
   const mounted = useRef(true);
   const metrics = useNetworkMetrics();
+  console.log(metrics,'metrics')
   const actions = useNetworkMetrics();
 
   const fetchData = useCallback(() => {

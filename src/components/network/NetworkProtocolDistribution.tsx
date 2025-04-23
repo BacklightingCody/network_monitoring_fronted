@@ -160,7 +160,7 @@ export function NetworkProtocolDistribution({
           ) : (
             <div className="flex h-80 items-center justify-center text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
               <div className="text-center">
-                <PieChart className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                <PieChart className="w-12 h-12 mx-auto text-gray-300 z-10 dark:text-gray-600 mb-2" />
                 <p>暂无协议数据</p>
               </div>
             </div>

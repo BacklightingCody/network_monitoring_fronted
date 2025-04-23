@@ -38,7 +38,7 @@ export function NetworkTopTrafficSources({
       .filter((source: any) => source && source.ip && source.ip !== '0.0.0.0')
       .slice(0, maxDisplay)
       .map((source: any) => ({
-        name: source.ip || 'Unknown',
+        ip: source.ip || 'Unknown',
         '数据包数': source.count || 0,
         '流量(KB)': source.bytesTransferred ? Math.round(source.bytesTransferred / 1024) : 0, // 转为KB并四舍五入
       }));
@@ -152,9 +152,11 @@ export function NetworkTopTrafficSources({
             <div className="h-80">
               <BarCharts
                 data={getTopSourcesChartData()}
-                xAxisKey="name"
+                xAxisKey="ip"
                 barSize={30}
                 layout="vertical"
+                yAxisUnit="KB"
+                customColors={['#4f46e5', '#10b981']}
               />
             </div>
           ) : (

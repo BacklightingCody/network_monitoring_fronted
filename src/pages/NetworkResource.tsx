@@ -26,7 +26,7 @@ export function NetworkResource() {
     isLoading,
     isPolling,
   } = useTrafficMetricsData() || {};
-
+console.log(basicStats,'basicStats')
   const actions = useTrafficMetricsActions();
   const isMounted = useRef(false);
 
@@ -36,28 +36,18 @@ export function NetworkResource() {
       isMounted.current = true;
       // 首次加载数据
       actions.fetchAllTrafficMetrics();
+      // 开始轮询
+      actions.startPolling();
     }
     
     // 组件卸载时重置标志
     return () => {
-      isMounted.current = false;
-    };
-  }, [actions]);
-  
-  // 单独处理轮询逻辑
-  useEffect(() => {
-    // 开始轮询
-    if (!isPolling) {
-      actions.startPolling();
-    }
-    
-    // 组件卸载时停止轮询
-    return () => {
-      if (isPolling) {
+      if(isMounted.current) {
         actions.stopPolling();
+        isMounted.current = false;
       }
     };
-  }, [actions, isPolling]);
+  }, []);
 
   // 格式化流量大小
   const formatBytes = (bytes: number): string => {
@@ -71,8 +61,16 @@ export function NetworkResource() {
   // 格式化日期时间
   const formatDateTime = (dateStr: string): string => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleString();
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        return '无效日期';
+      }
+      return date.toLocaleString();
+    } catch (error) {
+      console.error('日期格式化错误:', error, dateStr);
+      return '无效日期';
+    }
   };
 
   // 如果正在加载并且没有数据
@@ -376,7 +374,7 @@ export function NetworkResource() {
               <h3 className="text-lg font-medium">应用统计</h3>
             </div>
             <div className="overflow-auto">
-              <Table>
+              <Table> 
                 <TableHeader>
                   <TableRow>
                     <TableHead>应用名称</TableHead>

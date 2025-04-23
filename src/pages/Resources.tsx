@@ -11,10 +11,10 @@ export function Resources() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-gray-900">资源管理</h1>
-      {/* <CpuMetrics />
+      <CpuMetrics />
       <DiskMetrics />
       <NetworkMetrics />
-      <MemoryMetrics /> */}
+      <MemoryMetrics />
       <MetricsSystem />
       <ResourceUsageHistory />
       <ResourceAlerts />

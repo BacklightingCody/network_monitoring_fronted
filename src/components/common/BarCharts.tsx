@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useTheme } from 'next-themes';
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
 
 export interface BarChartData {
   name: string;
@@ -148,6 +150,27 @@ const BarCharts: React.FC<BarChartsProps> = ({
     return `${value.toFixed(2)} ${yAxisUnit}`;
   };
   
+  // 格式化x轴时间
+  const formatXAxisTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    
+    try {
+      const date = dayjs(timeStr);
+      const today = dayjs().startOf('day');
+      
+      // 如果是今天的时间，只显示时间
+      if (date.isAfter(today) || date.isSame(today)) {
+        return date.format('HH:mm:ss');
+      }
+      
+      // 否则显示日期和时间
+      return date.format('MM-DD HH:mm');
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return timeStr;
+    }
+  };
+  
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
@@ -173,6 +196,7 @@ const BarCharts: React.FC<BarChartsProps> = ({
               angle={-45}
               textAnchor="end"
               height={60}
+              tickFormatter={formatXAxisTime}
             />
             <YAxis 
               tickFormatter={formatValue}
@@ -199,13 +223,16 @@ const BarCharts: React.FC<BarChartsProps> = ({
               axisLine={{ stroke: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' }}
               tickLine={{ stroke: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' }}
               width={120}
+              tickFormatter={undefined}
             />
           </>
         )}
         
         <Tooltip
           formatter={(value: number, name: string) => [formatValue(value), name]}
-          labelFormatter={(label) => `时间: ${label}`}
+          labelFormatter={(label) => {
+            return isNaN(Date.parse(label)) ? `${label}` : `时间: ${formatXAxisTime(label)}`;
+          }}
           contentStyle={{
             backgroundColor: isDark ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.9)',
             borderColor: isDark ? 'rgba(100, 116, 139, 0.5)' : 'rgba(203, 213, 225, 0.8)',

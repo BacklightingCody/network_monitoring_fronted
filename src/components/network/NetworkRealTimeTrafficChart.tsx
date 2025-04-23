@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { Card } from '@/components/common/Card';
-import { Activity, TrendingUp, Zap } from 'lucide-react';
+import { Activity, TrendingUp, Zap, Database, Cpu } from 'lucide-react';
 import LineCharts from '@/components/common/LineCharts';
 import { useTrafficMetricsData, useTrafficMetricsActions } from '@/stores';
+import { useNetworkMetrics } from '@/stores';
 
 interface NetworkRealTimeTrafficChartProps {
   className?: string;
@@ -19,6 +20,9 @@ export function NetworkRealTimeTrafficChart({
   const { realtimeTraffic, isPolling } = useTrafficMetricsData();
   const actions = useTrafficMetricsActions();
   const isMounted = useRef(false);
+
+  // 获取NetworkMetrics数据
+  const networkMetrics = useNetworkMetrics();
 
   // 组件挂载时获取数据，不自动开始轮询
   useEffect(() => {
@@ -103,6 +107,46 @@ export function NetworkRealTimeTrafficChart({
     ];
   };
 
+  // 从NetworkMetrics获取历史总流量趋势
+  const getNetworkMetricsTrafficData = () => {
+    if (!networkMetrics.trafficTrend?.bytesReceived || !networkMetrics.trafficTrend?.bytesSent) {
+      return [];
+    }
+    
+    return [
+      {
+        name: '接收流量',
+        data: networkMetrics.trafficTrend.bytesReceived,
+        color: '#3B82F6', // 蓝色
+      },
+      {
+        name: '发送流量',
+        data: networkMetrics.trafficTrend.bytesSent,
+        color: '#10B981', // 绿色
+      },
+    ];
+  };
+
+  // 从NetworkMetrics获取数据包趋势
+  const getNetworkMetricsPacketsData = () => {
+    if (!networkMetrics.packetsTrend?.received || !networkMetrics.packetsTrend?.sent) {
+      return [];
+    }
+    
+    return [
+      {
+        name: '接收数据包',
+        data: networkMetrics.packetsTrend.received,
+        color: '#F59E0B', // 琥珀色
+      },
+      {
+        name: '发送数据包',
+        data: networkMetrics.packetsTrend.sent,
+        color: '#EC4899', // 粉色
+      },
+    ];
+  };
+
   // 计算当前流量数据
   const getCurrentTrafficData = () => {
     if (!realtimeTraffic?.timePoints || !realtimeTraffic.timePoints.length) {
@@ -118,6 +162,25 @@ export function NetworkRealTimeTrafficChart({
   };
 
   const currentTraffic = getCurrentTrafficData();
+
+  // 获取接收和发送的总流量
+  const getTotalTraffic = () => {
+    return {
+      bytesReceived: networkMetrics.bytesReceived?.reduce((sum, m) => sum + m.value, 0) || 0,
+      bytesSent: networkMetrics.bytesSent?.reduce((sum, m) => sum + m.value, 0) || 0,
+    };
+  };
+
+  const totalTraffic = getTotalTraffic();
+
+  // 格式化字节数
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+  };
 
   return (
     <Card className={`p-4 ${className} shadow-lg border border-gray-100 dark:border-gray-800`}>
@@ -154,6 +217,7 @@ export function NetworkRealTimeTrafficChart({
             <div>
               <p className="text-sm font-medium text-blue-600 dark:text-blue-400">入站流量</p>
               <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{currentTraffic.in} <span className="text-sm">KB/s</span></p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">总接收: {formatBytes(totalTraffic.bytesReceived)}</p>
             </div>
             <TrendingUp className="w-8 h-8 text-blue-500" />
           </div>
@@ -164,6 +228,7 @@ export function NetworkRealTimeTrafficChart({
             <div>
               <p className="text-sm font-medium text-green-600 dark:text-green-400">出站流量</p>
               <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{currentTraffic.out} <span className="text-sm">KB/s</span></p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">总发送: {formatBytes(totalTraffic.bytesSent)}</p>
             </div>
             <TrendingUp className="w-8 h-8 text-green-500" />
           </div>
@@ -174,6 +239,7 @@ export function NetworkRealTimeTrafficChart({
             <div>
               <p className="text-sm font-medium text-purple-600 dark:text-purple-400">总流量</p>
               <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{currentTraffic.total} <span className="text-sm">KB/s</span></p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">带宽: {formatBytes(networkMetrics.currentBandwidth || 0)}/s</p>
             </div>
             <Zap className="w-8 h-8 text-purple-500" />
           </div>
@@ -182,7 +248,7 @@ export function NetworkRealTimeTrafficChart({
 
       <div className="space-y-8">
         <div className="h-72 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-          <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-4">带宽使用 (KB/s)</h3>
+          <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-4">实时带宽使用 (KB/s)</h3>
           {realtimeTraffic?.timePoints && Array.isArray(realtimeTraffic.timePoints) && realtimeTraffic.timePoints.length > 0 ? (
             <div className="h-64">
               <LineCharts
@@ -206,7 +272,7 @@ export function NetworkRealTimeTrafficChart({
         </div>
 
         <div className="h-72 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-          <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-4">数据包速率 (包/秒)</h3>
+          <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-4">实时数据包速率 (包/秒)</h3>
           {realtimeTraffic?.timePoints && Array.isArray(realtimeTraffic.timePoints) && realtimeTraffic.timePoints.length > 0 ? (
             <div className="h-64">
               <LineCharts
@@ -224,6 +290,56 @@ export function NetworkRealTimeTrafficChart({
               <div className="text-center">
                 <Activity className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
                 <p>暂无实时数据</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 历史总流量趋势图 */}
+        <div className="h-72 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+          <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-4">历史流量趋势</h3>
+          {networkMetrics.trafficTrend?.bytesReceived && networkMetrics.trafficTrend.bytesReceived.length > 0 ? (
+            <div className="h-64">
+              <LineCharts
+                data={getNetworkMetricsTrafficData()}
+                timeRange="7d"
+                yAxisUnit="B"
+                showLegend={true}
+                dot={false}
+                curveType="monotone"
+                syncId="network-history"
+              />
+            </div>
+          ) : (
+            <div className="flex h-64 items-center justify-center text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+              <div className="text-center">
+                <Database className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                <p>暂无历史流量数据</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 历史数据包趋势图 */}
+        <div className="h-72 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+          <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-4">历史数据包趋势</h3>
+          {networkMetrics.packetsTrend?.received && networkMetrics.packetsTrend.received.length > 0 ? (
+            <div className="h-64">
+              <LineCharts
+                data={getNetworkMetricsPacketsData()}
+                timeRange="7d"
+                yAxisUnit="个"
+                showLegend={true}
+                dot={false}
+                curveType="monotone"
+                syncId="network-history"
+              />
+            </div>
+          ) : (
+            <div className="flex h-64 items-center justify-center text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+              <div className="text-center">
+                <Cpu className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                <p>暂无历史数据包数据</p>
               </div>
             </div>
           )}

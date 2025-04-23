@@ -16,7 +16,6 @@ export function MetricsSystem() {
   // 分别获取数据和操作，避免不必要的重渲染
   const metrics = useSystemMetricsData();
   const actions = useSystemMetricsActions();
-  console.log(metrics, 'kxc')
   // 使用 ref 追踪组件是否已挂载，避免多次设置轮询
   const isMounted = useRef(false);
 
@@ -31,6 +30,12 @@ export function MetricsSystem() {
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+  };
+
+  // 格式化时间
+  const formatTime = (dateStr: string): string => {
+    if (!dateStr) return '无数据';
+    return new Date(dateStr).toLocaleString();
   };
 
   // 格式化百分比

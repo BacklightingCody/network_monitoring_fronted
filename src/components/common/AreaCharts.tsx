@@ -46,6 +46,44 @@ const darkModeColors = [
   'rgb(45, 212, 191)',  // teal-400
 ];
 
+// 格式化时间轴标签
+const formatXAxisTime = (tickItem: string) => {
+  if (!tickItem) return '';
+  
+  try {
+    const date = new Date(tickItem);
+    
+    // 检查是否为有效日期
+    if (isNaN(date.getTime())) {
+      return tickItem;
+    }
+    
+    // 获取小时和分钟，确保两位数格式
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    
+    // 获取月份和日期
+    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // 月份从0开始
+    const day = date.getDate().toString().padStart(2, '0');
+    
+    // 根据时间范围返回不同格式
+    // 如果是当天的数据，只显示时间
+    const today = new Date();
+    if (date.getDate() === today.getDate() && 
+        date.getMonth() === today.getMonth() && 
+        date.getFullYear() === today.getFullYear()) {
+      return `${hours}:${minutes}:${seconds}`;
+    }
+    
+    // 否则显示日期和时间
+    return `${month}-${day} ${hours}:${minutes}`;
+  } catch (error) {
+    console.error('时间格式化出错:', error);
+    return tickItem;
+  }
+};
+
 const AreaCharts: React.FC<AreaChartsProps> = ({
   data,
   timeRange = '1h',
@@ -168,6 +206,7 @@ const AreaCharts: React.FC<AreaChartsProps> = ({
           angle={-45}
           textAnchor="end"
           height={60}
+          tickFormatter={formatXAxisTime}
         />
         
         <YAxis 
@@ -181,7 +220,7 @@ const AreaCharts: React.FC<AreaChartsProps> = ({
         
         <Tooltip
           formatter={(value: number, name: string) => [formatValue(value), name]}
-          labelFormatter={(label) => `时间: ${label}`}
+          labelFormatter={(label) => `时间: ${formatXAxisTime(label)}`}
           contentStyle={{
             backgroundColor: isDark ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.9)',
             borderColor: isDark ? 'rgba(100, 116, 139, 0.5)' : 'rgba(203, 213, 225, 0.8)',
