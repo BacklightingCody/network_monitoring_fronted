@@ -5,6 +5,7 @@ import { createNetworkMetricsSlice, NetworkMetricsSlice } from './slices/network
 import { createMemoryMetricsSlice, MemoryMetricsSlice } from './slices/memoryMetricsSlice';
 import { createSystemMetricsSlice, SystemMetricsSlice } from './slices/systemMetricsSlice';
 import { createTrafficMetricsSlice, TrafficMetricsSlice } from './slices/trafficMetricsSlice';
+import { createLogsSlice, LogsSlice } from './slices/logsSlice';
 import { useCallback } from 'react';
 
 // 定义完整的 Store 状态类型
@@ -15,6 +16,7 @@ export interface StoreState {
   memory: MemoryMetricsSlice;
   system: SystemMetricsSlice;
   traffic: TrafficMetricsSlice;
+  logs: LogsSlice;
 }
 
 // 创建 store
@@ -25,6 +27,7 @@ export const useStore = create<StoreState>()((set, get, api) => ({
   memory: createMemoryMetricsSlice(set, get, api),
   system: createSystemMetricsSlice(set, get, api),
   traffic: createTrafficMetricsSlice(set, get, api),
+  logs: createLogsSlice(set, get, api),
 }));
 
 // CPU 指标选择器
@@ -365,5 +368,42 @@ export const useTrafficMetricsActions = () => {
 export const useTrafficMetrics = () => {
   const data = useTrafficMetricsData();
   const actions = useTrafficMetricsActions();
+  return { ...data, ...actions };
+};
+
+// 日志选择器
+export const useLogsData = () => useStore(state => ({
+  logs: state.logs.logs,
+  totalLogs: state.logs.totalLogs,
+  logTypeStats: state.logs.logTypeStats,
+  logSourceStats: state.logs.logSourceStats,
+  logTimeStats: state.logs.logTimeStats,
+  filter: state.logs.filter,
+  isLoading: state.logs.isLoading,
+  isStatsLoading: state.logs.isStatsLoading,
+  error: state.logs.error,
+  isPolling: state.logs.isPolling,
+  pollingInterval: state.logs.pollingInterval,
+}));
+
+export const useLogsActions = () => {
+  const store = useStore();
+  
+  return {
+    fetchLogs: store.logs.fetchLogs,
+    fetchLogStats: store.logs.fetchLogStats,
+    setFilter: store.logs.setFilter,
+    resetFilter: store.logs.resetFilter,
+    refreshLogs: store.logs.refreshLogs,
+    clearAllLogs: store.logs.clearAllLogs,
+    startPolling: store.logs.startPolling,
+    stopPolling: store.logs.stopPolling,
+    setPollingInterval: store.logs.setPollingInterval,
+  };
+};
+
+export const useLogs = () => {
+  const data = useLogsData();
+  const actions = useLogsActions();
   return { ...data, ...actions };
 }; 
